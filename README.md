@@ -117,6 +117,11 @@ Example of *dfu.py* Output
 The final "State timeout" is due to the target peripheral rebooting, as expected, and the disconnect not getting back soon enough.  
 This is benign: the update should have been successful and the peripheral should have restarted and run the new firmware. 
 
+**LINKS**  
+https://infocenter.nordicsemi.com/index.jsp?topic=%2Fcom.nordic.infocenter.sdk52.v0.9.2%2Fbledfu_application.html&cp=6_0_2_4_2_2
+
+
 **TODO**  
 - Go in DFU Mode buttonless
+https://infocenter.nordicsemi.com/index.jsp?topic=%2Fcom.nordic.infocenter.sdk52.v0.9.2%2Fbledfu_application.html&cp=6_0_2_4_2_2
 - Send encrypted applications
