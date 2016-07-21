@@ -116,3 +116,7 @@ Example of *dfu.py* Output
 **NOTE:**  
 The final "State timeout" is due to the target peripheral rebooting, as expected, and the disconnect not getting back soon enough.  
 This is benign: the update should have been successful and the peripheral should have restarted and run the new firmware. 
+
+**TODO**  
+- Go in DFU Mode buttonless
+- Send encrypted applications
