@@ -1,4 +1,4 @@
-Python nRF51 DFU Server
+Python nRF52 DFU Server
 ============================
 
 A python script for bluez gatttool using pexpect to achive Device Firmware Updates (DFU) to the nRF51.  
@@ -17,14 +17,11 @@ It is assumed you can trigger your peripheral to enter the bootloader; either by
 The *dfu.py* utility comes into play only after the peripheral is executing the bootloader.
 
 System:
-* Raspberry Pi - RaspberryPi B+ or later (tested with RaspPi B+)
-* Bluetooth 4.0 USB dongle - (tested with "UTechSmart" and "Plugable" BLE dongles)
-* Linux raspian - kernel 3.12.22 or later
+* Ubuntu 14.04
+* Asus X550LD (With integrated Bluetooth 4.0 interface)
 * bluez - 5.4 or later
 
-See [here](https://learn.adafruit.com/pibeacon-ibeacon-with-a-raspberry-pi/setting-up-the-pi "BlueZ build") for details on building bluez.
-
-This project assumes you are developing on a Linux/Unix or OSX system and deploying to a Raspberry Pi (Raspian) system. Development on Windows systems should be OK, but it hasn't been (nor will be) tested. 
+This project assumes you are developing on a Linux/Unix or OSX system and deploying to a Linux system. 
 
 Prerequisite
 ------------
@@ -34,28 +31,16 @@ Prerequisite
 
 Firmware Build Requirement
 --------------------------
-* Your nRF51 firmware build method will produce either a firmware hex or bin file named *application.hex* or *application.bin*.  This naming convention is per Nordics DFU specification, which is use by this DFU server as well as the Android Master Control Panel DFU, and iOS DFU app.  
-* Your nRF51 firmware build method will produce an Init file (aka *application.dat*).  Again, this is per Nordic's naming conventions. 
+* Your nRF52 firmware build method will produce either a firmware hex or bin file named *application.hex* or *application.bin*.  This naming convention is per Nordics DFU specification, which is use by this DFU server as well as the Android Master Control Panel DFU, and iOS DFU app.  
+* Your nRF52 firmware build method will produce an Init file (aka *application.dat*).  Again, this is per Nordic's naming conventions. 
 
-The *gen_dat* Utility
+The *nrfutil* Utility
 ---------------------
-The gen_dat utility will read your build method's hex file and produce a dat file.  The utility is written the C-language, but should be easy to rebuild: just follow the directions at the top of the source file. Ideally, you would incorporate the gen_dat utility into your build system so that your build method will generate the dat file for each build.  
+https://github.com/NordicSemiconductor/pc-nrfutil/tree/0_5_1
 
-Below is a snippet showing how you might use the gen_dat utility in a makefile. The *application.mk* file shows a more complete example. This makefile example shows how the gen_dat and zip files are integrated into the build process.  It is an example, and you must customize it to your requirements.
+The nrfutil utility will read your build method's hex file and produce a zip file. Ideally, you would incorporate the nrfutil utility into your build system so that your build method will generate the dat file for each build.  
 
-    GENZIP   := zip
-    GENDAT   := ./gen_dat
-    
-    # Create .dat file from the .bin file
-    gendat: 
-        @echo Preparing: application.dat
-        $(NO_ECHO)$(GENDAT) $(OUTPUT_BINARY_DIRECTORY)/application.bin $(OUTPUT_BINARY_DIRECTORY)/application.dat 
-    
-    # Create .zip file from .bin and .dat files
-    genzip: 
-	@echo Preparing: $(OUTPUT_NAME).zip
-	-@$(GENZIP) -j $(OUTPUT_BINARY_DIRECTORY)/application.zip $(OUTPUT_BINARY_DIRECTORY)/application.bin $(OUTPUT_BINARY_DIRECTORY)/application.dat
-
+nrfutil dfu genpkg app_package.zip --application application.hex
 
 Usage
 -----
@@ -83,7 +68,7 @@ To figure out the address of DfuTarg do a 'hcitool lescan' -
 Example of *dfu.py* Output
 ------------------------
 
-    pi@raspberrypi ~/src/ota-dfu/ $ sudo ./dfu.py -z application_debug_1435008894.zip -a EF:FF:D2:92:9C:2A
+    ~/src/ota-dfu/ $ sudo ./dfu.py -z application_debug_1435008894.zip -a EF:FF:D2:92:9C:2A
     DFU Server start
     unzip_dir: /tmp/application_debug_1435008894_nzjesh
     input_setup
