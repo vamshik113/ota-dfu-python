@@ -97,9 +97,9 @@ class BleDfuServer(object):
     #--------------------------------------------------------------------------
     # Adjust these handle values to your peripheral device requirements.
     #--------------------------------------------------------------------------
-    ctrlpt_handle      = 0x19
-    ctrlpt_cccd_handle = 0x1a
-    data_handle        = 0x17
+    ctrlpt_handle      = 0x10
+    ctrlpt_cccd_handle = 0x11
+    data_handle        = 0x0e
 
     pkt_receipt_interval = 10
     pkt_payload_size     = 20
@@ -113,6 +113,10 @@ class BleDfuServer(object):
         self.datfile_path = datfile_path
 
         self.ble_conn = pexpect.spawn("gatttool -b '%s' -t random --interactive" % target_mac)
+
+	msg_ret = self.ble_conn.before
+	if msg_ret!="":
+		print msg_ret
 
         # remove next line comment for pexpect detail tracing.
         #self.ble_conn.logfile = sys.stdout
@@ -135,6 +139,10 @@ class BleDfuServer(object):
             res = self.ble_conn.expect('\[CON\].*>', timeout=10)
         except pexpect.TIMEOUT, e:
             print "Connect timeout"
+
+	msg_ret = self.ble_conn.before
+	if msg_ret!="":
+		print msg_ret
 
     #--------------------------------------------------------------------------
     # Wait for notification to arrive.
@@ -166,9 +174,13 @@ class BleDfuServer(object):
                 self.ble_conn.sendline('')
                 string = self.ble_conn.before
                 if '[   ]' in string:
-                    print 'Connection lost! {0}.{1}'.format(name, os.getpid())
+                    print 'Connection lost! '
                     raise Exception('Connection Lost')
                 return None
+
+	    msg_ret = self.ble_conn.before
+	    if msg_ret!="":
+	    	print msg_ret
 
             if index == 0:
                 after = self.ble_conn.after
@@ -237,6 +249,12 @@ class BleDfuServer(object):
         except pexpect.TIMEOUT, e:
             print "State timeout"
 
+	msg_ret = self.ble_conn.before
+	if msg_ret!="":
+		print msg_ret
+
+		
+
     #--------------------------------------------------------------------------
     # Send one byte: command
     #--------------------------------------------------------------------------
@@ -248,6 +266,11 @@ class BleDfuServer(object):
             res = self.ble_conn.expect('.* Characteristic value was written successfully', timeout=10)
         except pexpect.TIMEOUT, e:
             print "State timeout"
+
+	msg_ret = self.ble_conn.before
+	if msg_ret!="":
+		print msg_ret
+
 
     #--------------------------------------------------------------------------
     # Send 3 bytes: PKT_RCPT_NOTIF_REQ with interval of 10 (0x0a)
@@ -265,6 +288,11 @@ class BleDfuServer(object):
         except pexpect.TIMEOUT, e:
             print "Send PKT_RCPT_NOTIF_REQ timeout"
 
+	msg_ret = self.ble_conn.before
+	if msg_ret!="":
+		print msg_ret
+
+
     #--------------------------------------------------------------------------
     # Send an array of bytes: request mode
     #--------------------------------------------------------------------------
@@ -278,6 +306,11 @@ class BleDfuServer(object):
             res = self.ble_conn.expect('.* Characteristic value was written successfully', timeout=10)
         except pexpect.TIMEOUT, e:
             print "Data timeout"
+
+	msg_ret = self.ble_conn.before
+	if msg_ret!="":
+		print msg_ret
+
 
     #--------------------------------------------------------------------------
     # Send an array of bytes: command mode
@@ -293,13 +326,19 @@ class BleDfuServer(object):
     def _dfu_enable_cccd(self):
         cccd_enable_value_array_lsb = convert_uint16_to_array(0x0001)
         cccd_enable_value_hex_string = convert_array_to_hex_string(cccd_enable_value_array_lsb)
-        self.ble_conn.sendline('char-write-req 0x%04x %s' % (self.ctrlpt_cccd_handle, cccd_enable_value_hex_string))
+	self.ble_conn.sendline('char-write-req 0x%04x %s' % (self.ctrlpt_cccd_handle, cccd_enable_value_hex_string))
+	#self.ble_conn.sendline('char-write-req 0x%02x %s' % (self.ctrlpt_cccd_handle, cccd_enable_value_hex_string))
 
         # Verify that CCCD was successfully written
         try:
             res = self.ble_conn.expect('.* Characteristic value was written successfully', timeout=10)
         except pexpect.TIMEOUT, e:
             print "CCCD timeout"
+
+	msg_ret = self.ble_conn.before
+	if msg_ret!="":
+		print msg_ret
+
 
     #--------------------------------------------------------------------------
     # Send the Init info (*.dat file contents) to peripheral device.
@@ -437,7 +476,7 @@ def main():
     print "DFU Server start"
 
     try:
-        parser = optparse.OptionParser(usage='%prog -f <hex_file> -a <dfu_target_address>\n\nExample:\n\tdfu.py -f application.hex -f application.dat -a cd:e3:4a:47:1c:e4',
+        parser = optparse.OptionParser(usage='%prog -f <hex_file> -a <dfu_target_address>\n\nExample:\n\tdfu.py -f application.hex -d application.dat -a cd:e3:4a:47:1c:e4',
                                        version='0.5')
 
         parser.add_option('-a', '--address',
@@ -498,8 +537,14 @@ def main():
                 exit(2)
 
             unpacker = Unpacker()
-
-            hexfile, datfile = unpacker.unpack_zipfile(options.zipfile)
+            print "Test2"
+            print options.zipfile
+            try:
+            	hexfile, datfile = unpacker.unpack_zipfile(options.zipfile)	
+            except Exception, e:
+		print "ERR"
+		print e
+		pass
 
         else:
             if (not options.hexfile) or (not options.datfile):
@@ -545,8 +590,8 @@ def main():
         pass
 
     # If Unpacker for zipfile used then delete Unpacker
-    if unpacker != None:
-        unpacker.delete()
+    #if unpacker != None:
+    #    unpacker.delete()
 
     print "DFU Server done"
 
