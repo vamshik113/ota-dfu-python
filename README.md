@@ -1,7 +1,7 @@
 Python nRF52 DFU Server
 ============================
 
-A python script for bluez gatttool using pexpect to achive Device Firmware Updates (DFU) to the nRF51.  
+A python script for bluez gatttool using pexpect to achive Device Firmware Updates (DFU) to the nRF52.  
 The host system is assumed to be some flavor of Linux, and was developed with the Raspberry-Pi as the primary hosting system.
 
 **NOTE:**   
