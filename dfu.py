@@ -58,6 +58,13 @@ DFU_status_to_str = {
     "06" : "OPER_FAILED",
 }
 
+UUID ={
+    "00002902-0000-1000-8000-00805f9b34fb": "CCCD",
+    "00001531-1212-efde-1523-785feabcd123": "DFU Control Point",
+    "00001532-1212-efde-1523-785feabcd123": "DFU Packet",
+    "00001534-1212-efde-1523-785feabcd123": "DFU Version",       
+}
+
 """
 ------------------------------------------------------------------------------
  Convert a number into an array of 4 bytes (LSB).
@@ -111,6 +118,7 @@ class BleDfuServer(object):
     ctrlpt_handle      = 0x10
     ctrlpt_cccd_handle = 0x11
     data_handle        = 0x0e
+    reset_handle      = 0x13
 
     pkt_receipt_interval = 10
     pkt_payload_size     = 20
@@ -164,7 +172,6 @@ class BleDfuServer(object):
         if msg_ret!="":
         print msg_ret
         """
-        
         return True
         
     """
@@ -261,14 +268,16 @@ class BleDfuServer(object):
             receipt = receipt + (byte3 << 8)
             receipt = receipt + (byte4 << 0)
 
-            print "PKT_RCPT: {0:8}".format(receipt)
+            print "PKT_RCPT: {0:8}".format(receipt) + " of " + str(self.hex_size)
 
             return "OK"
 
 
-    #--------------------------------------------------------------------------
-    # Send two bytes: command + option
-    #--------------------------------------------------------------------------
+    """
+    --------------------------------------------------------------------------
+     Send two bytes: command + option
+    --------------------------------------------------------------------------
+    """
     def _dfu_state_set(self, opcode):
         self.ble_conn.sendline('char-write-req 0x%04x %04x' % (self.ctrlpt_handle, opcode))
 
@@ -278,12 +287,11 @@ class BleDfuServer(object):
         except pexpect.TIMEOUT, e:
             print "State timeout"
 
-	"""
-	msg_ret = self.ble_conn.before
-	if msg_ret!="":
-		print msg_ret
-	"""
-		
+        """
+        msg_ret = self.ble_conn.before
+        if msg_ret!="":
+            print msg_ret
+        """
 
     #--------------------------------------------------------------------------
     # Send one byte: command
@@ -297,11 +305,11 @@ class BleDfuServer(object):
         except pexpect.TIMEOUT, e:
             print "State timeout"
 
-	"""
-	msg_ret = self.ble_conn.before
-	if msg_ret!="":
-		print msg_ret
-	"""
+        """
+        msg_ret = self.ble_conn.before
+        if msg_ret!="":
+            print msg_ret
+        """
 
     #--------------------------------------------------------------------------
     # Send 3 bytes: PKT_RCPT_NOTIF_REQ with interval of 10 (0x0a)
@@ -319,11 +327,11 @@ class BleDfuServer(object):
         except pexpect.TIMEOUT, e:
             print "Send PKT_RCPT_NOTIF_REQ timeout"
 
-	"""
-	msg_ret = self.ble_conn.before
-	if msg_ret!="":
-		print msg_ret
-	"""
+        """
+        msg_ret = self.ble_conn.before
+        if msg_ret!="":
+            print msg_ret
+        """
 
     #--------------------------------------------------------------------------
     # Send an array of bytes: request mode
@@ -395,7 +403,7 @@ class BleDfuServer(object):
     #--------------------------------------------------------------------------
     def input_setup(self):
 
-        #print "input_setup"
+        print "Sending file " + self.hexfile_path + " to " + self.target_mac
 
         if self.hexfile_path == None:
             raise Exception("input invalid")
@@ -418,11 +426,28 @@ class BleDfuServer(object):
         raise Exception("input invalid")
     
     def _dfu_check_mode(self):
+        
+        self._dfu_get_handles()
+        print self.ctrlpt_cccd_handle
+        print self.ctrlpt_handle
+        print self.data_handle
+        
         print "_dfu_check_mode"
         #look for DFU switch characteristic
-        resetHandle = getHandle(self.ble_conn, '00001534-1212-efde-1523-785feabcd123')
+
+        #00001531-1212-efde-1523-785feabcd123 DFU Control Point handle:
+        #00001534-1212-efde-1523-785feabcd123 DFU Version
+        #00002902-0000-1000-8000-00805f9b34fb
         
-        print "resetHandle " + resetHandle
+        resetHandle = getHandle(self.ble_conn, '00001531-1212-efde-1523-785feabcd123')  
+
+        #resetHandle = getHandle(self.ble_conn, 'f5f90005-59f9-11e4-aa15-123b93f75cba')
+        #resetHandle = getHandle(self.ble_conn,"00002902-0000-1000-8000-00805f9b34fb")
+
+        
+        print "resetHandle " + str(resetHandle)
+        
+        self.ctrlpt_cccd_handle=None
         
         if not resetHandle:
             # maybe it already is IN DFU mode
@@ -434,6 +459,7 @@ class BleDfuServer(object):
         if resetHandle or self.ctrlpt_handle:
             if resetHandle:
                 print "Switching device into DFU mode"
+                print 'char-write-cmd 0x%02s %02x' % (resetHandle, 1)
                 self.ble_conn.sendline('char-write-cmd 0x%02s %02x' % (resetHandle, 1))
                 time.sleep(0.2)
         
@@ -467,6 +493,7 @@ class BleDfuServer(object):
             return False
 
     def _dfu_get_handles(self):
+        print "_dfu_get_handles"
         #s110
         #self.ctrlpt_cccd_handle = '0e'
         #self.data_handle = '0b'
@@ -476,14 +503,43 @@ class BleDfuServer(object):
         self.data_handle = '0e'
         
         
-        ctrlpt_cccd_handle = self.getHandle(self.ble_conn,"00002902-0000-1000-8000-00805f9b34fb")
-        data_handle = self.getHandle(self.ble_conn,"00001532-1212-efde-1523-785feabcd123")
+        ctrlpt_cccd_handle = getHandle(self.ble_conn,"00002902-0000-1000-8000-00805f9b34fb")
+        data_handle = getHandle(self.ble_conn,"00001532-1212-efde-1523-785feabcd123")
+        
+        print "ctrlpt_cccd_handle " + str(ctrlpt_cccd_handle)
+        print "data_handle " + str(data_handle)
         
         if ctrlpt_cccd_handle:
             self.ctrlpt_cccd_handle = ctrlpt_cccd_handle
         if data_handle:
             self.data_handle = data_handle
     
+    def switch_in_dfu_mode(self):
+        """
+        # scan for characteristics:
+        status = self._dfu_check_mode()
+
+        print "status " + str(status)
+        if not status:
+            return False
+         
+        self._dfu_get_handles()
+        """
+        #self._dfu_get_handles()
+        
+        print 'char-write-cmd 0x%02s %02x' % ("14", 1)
+        print 'char-write-cmd 0x%02x 0104' % (self.reset_handle)
+        self.ble_conn.sendline('char-write-req 0x%02s %02x' % ("14", 1))
+        self.ble_conn.sendline('char-write-req 0x%02x 0104' % (self.reset_handle))  #Reset
+
+        time.sleep(0.5)
+        
+        #print  "Send 'START DFU' + Application Command"
+        #self._dfu_state_set(0x0104)
+        
+        ret = self.scan_and_connect()
+        print "Connected " + str(ret)
+        
 
     """
     --------------------------------------------------------------------------
@@ -493,16 +549,12 @@ class BleDfuServer(object):
     def dfu_send_image(self):
         print "dfu_send_image"
         
-        # scan for characteristics:
-        status = self._dfu_check_mode()
+        print "Switch in DFU mode"
+        #Comment this function if you are already in DFU mode. TODO: manage this function
+        self.switch_in_dfu_mode()
+        
 
-        if not status:
-            return False
-         
-        print "_dfu_get_handles"
-        self._dfu_get_handles()
-
-        # Enable Notifications
+        print "Enable Notifications"
         self._dfu_enable_cccd()
 
         # Send 'START DFU' + Application Command
@@ -572,11 +624,15 @@ class BleDfuServer(object):
 
         # Send Activate and Reset Command
         self._dfu_state_set_byte(Commands.ACTIVATE_FIRMWARE_AND_RESET)
+        
+    def _read_DFU_mode(self):
+        pass
 
-
-    #--------------------------------------------------------------------------
-    # Disconnect from peer device if not done already and clean up. 
-    #--------------------------------------------------------------------------
+    """
+    --------------------------------------------------------------------------
+     Disconnect from peer device if not done already and clean up. 
+    --------------------------------------------------------------------------
+    """
     def disconnect(self):
         self.ble_conn.sendline('exit')
         self.ble_conn.close()
@@ -716,16 +772,15 @@ def main():
         ble_dfu.input_setup()
 
         # Connect to peer device.
-        ble_dfu.scan_and_connect()
-
-        # Transmit the hex image to peer device.
-        ble_dfu.dfu_send_image()
-
-        # Wait to receive the disconnect event from peripheral device.
-        time.sleep(1)
-
-        # Disconnect from peer device if not done already and clean up. 
-        ble_dfu.disconnect()
+        if ble_dfu.scan_and_connect():
+            # Transmit the hex image to peer device.
+            ble_dfu.dfu_send_image()
+    
+            # Wait to receive the disconnect event from peripheral device.
+            time.sleep(1)
+    
+            # Disconnect from peer device if not done already and clean up. 
+            ble_dfu.disconnect()
 
     except Exception, e:
         print e
