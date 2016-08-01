@@ -122,6 +122,6 @@ https://infocenter.nordicsemi.com/index.jsp?topic=%2Fcom.nordic.infocenter.sdk52
 
 
 **TODO**  
-- Go in DFU Mode buttonless
-Check getHandle branch. It works but I just need to manage when the nrf52 is in buttonless mode or not check the DFU version reading the characteristic UUID: 00001534....
+- Go in DFU Mode buttonless: 
+Check getHandle branch. It works but I just need to manage when the nrf52 is in buttonless mode or not checking the DFU version reading the characteristic UUID: 00001534.... Response: 01 00=Application mode (needs to switch in DFU mode)   08 00= Already in DFU mode
 - Send encrypted applications
