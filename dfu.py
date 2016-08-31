@@ -58,12 +58,12 @@ DFU_status_to_str = {
     "06" : "OPER_FAILED",
 }
 
-UUID ={
-    "00002902-0000-1000-8000-00805f9b34fb": "CCCD",
-    "00001531-1212-efde-1523-785feabcd123": "DFU Control Point",
-    "00001532-1212-efde-1523-785feabcd123": "DFU Packet",
-    "00001534-1212-efde-1523-785feabcd123": "DFU Version",       
-}
+class UUID:
+    CCCD 				= "00002902-0000-1000-8000-00805f9b34fb"
+    DFU_Control_Point 	= "00001531-1212-efde-1523-785feabcd123"
+    DFU_Packet			= "00001532-1212-efde-1523-785feabcd123"
+    DFU_Version			= "00001534-1212-efde-1523-785feabcd123"
+
 
 """
 ------------------------------------------------------------------------------
@@ -119,6 +119,7 @@ class BleDfuServer(object):
     ctrlpt_cccd_handle = 0x11
     data_handle        = 0x0e
     reset_handle      = 0x13
+    ctrlpt_cccd_handle_buttonless  = 0x14
 
     pkt_receipt_interval = 10
     pkt_payload_size     = 20
@@ -364,7 +365,10 @@ class BleDfuServer(object):
     #--------------------------------------------------------------------------
     # Enable DFU Control Point CCCD (Notifications)
     #--------------------------------------------------------------------------
-    def _dfu_enable_cccd(self):
+    def _dfu_enable_cccd(self, alreadyDfuMode):
+	handle=self.ctrlpt_cccd_handle
+	if(alreadyDfuMode==False):
+	   handle=self.ctrlpt_cccd_handle_buttonless
         print "_dfu_enable_cccd"
         cccd_enable_value_array_lsb = convert_uint16_to_array(0x0001)
         cccd_enable_value_hex_string = convert_array_to_hex_string(cccd_enable_value_array_lsb)
@@ -515,30 +519,38 @@ class BleDfuServer(object):
             self.data_handle = data_handle
     
     def switch_in_dfu_mode(self):
-        """
-        # scan for characteristics:
-        status = self._dfu_check_mode()
+		#TODO: First check the DFU Mode.
+		"""
+		# scan for characteristics:
+		status = self._dfu_check_mode()
 
-        print "status " + str(status)
-        if not status:
-            return False
-         
-        self._dfu_get_handles()
-        """
-        #self._dfu_get_handles()
-        
-        print 'char-write-cmd 0x%02s %02x' % ("14", 1)
-        print 'char-write-cmd 0x%02x 0104' % (self.reset_handle)
-        self.ble_conn.sendline('char-write-req 0x%02s %02x' % ("14", 1))
-        self.ble_conn.sendline('char-write-req 0x%02x 0104' % (self.reset_handle))  #Reset
+		print "status " + str(status)
+		if not status:
+			return False
+		 
+		self._dfu_get_handles()
+		"""
+		#self._dfu_get_handles()
 
-        time.sleep(0.5)
-        
-        #print  "Send 'START DFU' + Application Command"
-        #self._dfu_state_set(0x0104)
-        
-        ret = self.scan_and_connect()
-        print "Connected " + str(ret)
+		#Enable notifications 
+		print 'char-write-cmd 0x%02s %02x' % (self.ctrlpt_cccd_handle, 1)  #char-write-req 0x0014 0100
+		self.ble_conn.sendline('char-write-req 0x%02s %02x' % (self.ctrlpt_cccd_handle, 1))
+
+		#self._dfu_enable_cccd(False) #Try this
+
+		#Reset the board in DFU mode. After reset the board will be disconnected
+		print 'char-write-cmd 0x%02x 0104' % (self.reset_handle) #char-write-req 0x0013 0104
+		#self.ble_conn.sendline('char-write-req 0x%02s %02x' % ("14", 1))
+		self.ble_conn.sendline('char-write-req 0x%02x 0104' % (self.reset_handle))  #Reset
+
+		time.sleep(0.5)
+
+		#print  "Send 'START DFU' + Application Command"
+		#self._dfu_state_set(0x0104)
+
+		#Reconnect the board.
+		ret = self.scan_and_connect()
+		print "Connected " + str(ret)
         
 
     """
@@ -547,87 +559,111 @@ class BleDfuServer(object):
     --------------------------------------------------------------------------
     """
     def dfu_send_image(self):
-        print "dfu_send_image"
-        
-        print "Switch in DFU mode"
-        #Comment this function if you are already in DFU mode. TODO: manage this function
-        self.switch_in_dfu_mode()
-        
+		print "dfu_send_image"
 
-        print "Enable Notifications"
-        self._dfu_enable_cccd()
+		if not self._check_DFU_mode():
+			self.switch_in_dfu_mode()
 
-        # Send 'START DFU' + Application Command
-        self._dfu_state_set(0x0104)
+		print "Enable Notifications in DFU mode"
+		self._dfu_enable_cccd(True)
 
-        # Transmit binary image size
-        hex_size_array_lsb = convert_uint32_to_array(len(self.bin_array))
+		# Send 'START DFU' + Application Command
+		self._dfu_state_set(0x0104)
 
-        #print hex_size_array_lsb
-        self._dfu_data_send_req(hex_size_array_lsb)
-        print "Sending hex file size"
+		# Transmit binary image size
+		hex_size_array_lsb = convert_uint32_to_array(len(self.bin_array))
 
-        # Send 'INIT DFU' Command
-        self._dfu_state_set(0x0200)
+		#print hex_size_array_lsb
+		self._dfu_data_send_req(hex_size_array_lsb)
+		print "Sending hex file size"
 
-        # Wait for INIT DFU notification (indicates flash erase completed)
-        notify = self._dfu_wait_for_notify()
+		# Send 'INIT DFU' Command
+		self._dfu_state_set(0x0200)
 
-        # Check the notify status.
-        dfu_status = self._dfu_parse_notify(notify)
-        if dfu_status != "OK":
-            raise Exception("bad notification status")
+		# Wait for INIT DFU notification (indicates flash erase completed)
+		notify = self._dfu_wait_for_notify()
 
-        # Transmit the Init image (DAT).
-        self._dfu_send_init()
+		# Check the notify status.
+		dfu_status = self._dfu_parse_notify(notify)
+		if dfu_status != "OK":
+			raise Exception("bad notification status")
 
-        # Send 'INIT DFU' + Complete Command
-        self._dfu_state_set(0x0201)
+		# Transmit the Init image (DAT).
+		self._dfu_send_init()
 
-        # Send packet receipt notification interval (currently 10)
-        self._dfu_pkt_rcpt_notif_req()
+		# Send 'INIT DFU' + Complete Command
+		self._dfu_state_set(0x0201)
 
-        # Send 'RECEIVE FIRMWARE IMAGE' command to set DFU in firmware receive state. 
-        self._dfu_state_set_byte(Commands.RECEIVE_FIRMWARE_IMAGE)
+		# Send packet receipt notification interval (currently 10)
+		self._dfu_pkt_rcpt_notif_req()
 
-        '''
-        Send bin_array contents as as series of packets (burst mode).
-        Each segment is pkt_payload_size bytes long.
-        For every pkt_receipt_interval sends, wait for notification.
-        '''
-        segment_count = 1
-        for i in range(0, self.hex_size, self.pkt_payload_size):
+		# Send 'RECEIVE FIRMWARE IMAGE' command to set DFU in firmware receive state. 
+		self._dfu_state_set_byte(Commands.RECEIVE_FIRMWARE_IMAGE)
 
-            segment = self.bin_array[i:i + self.pkt_payload_size]
-            self._dfu_data_send_cmd(segment)
+		'''
+		Send bin_array contents as as series of packets (burst mode).
+		Each segment is pkt_payload_size bytes long.
+		For every pkt_receipt_interval sends, wait for notification.
+		'''
+		segment_count = 1
+		for i in range(0, self.hex_size, self.pkt_payload_size):
 
-            #print "segment #", segment_count
+			segment = self.bin_array[i:i + self.pkt_payload_size]
+			self._dfu_data_send_cmd(segment)
 
-            if (segment_count % self.pkt_receipt_interval) == 0:
-                notify = self._dfu_wait_for_notify()
+			#print "segment #", segment_count
 
-                if notify == None:
-                    raise Exception("no notification received")
+			if (segment_count % self.pkt_receipt_interval) == 0:
+				notify = self._dfu_wait_for_notify()
 
-                dfu_status = self._dfu_parse_notify(notify)
+				if notify == None:
+					raise Exception("no notification received")
 
-                if dfu_status == None or dfu_status != "OK":
-                    raise Exception("bad notification status")
+				dfu_status = self._dfu_parse_notify(notify)
 
-            segment_count += 1
+				if dfu_status == None or dfu_status != "OK":
+					raise Exception("bad notification status")
 
-        # Send Validate Command
-        self._dfu_state_set_byte(Commands.VALIDATE_FIRMWARE_IMAGE)
+			segment_count += 1
 
-        # Wait a bit for copy on the peer to be finished
-        time.sleep(1)
+		# Send Validate Command
+		self._dfu_state_set_byte(Commands.VALIDATE_FIRMWARE_IMAGE)
 
-        # Send Activate and Reset Command
-        self._dfu_state_set_byte(Commands.ACTIVATE_FIRMWARE_AND_RESET)
-        
-    def _read_DFU_mode(self):
-        pass
+		# Wait a bit for copy on the peer to be finished
+		time.sleep(1)
 
+		# Send Activate and Reset Command
+		self._dfu_state_set_byte(Commands.ACTIVATE_FIRMWARE_AND_RESET)
+		
+		"""
+		--------------------------------------------------------------------------
+			Return True is already in DFU mode
+		--------------------------------------------------------------------------
+		"""
+    def _check_DFU_mode(self):
+		print "Checking DFU State..."
+		res=False
+		self.ble_conn.sendline('char-read-uuid %s' % UUID.DFU_Version)
+		
+		#Skip two rows		
+		try:
+			res = self.ble_conn.expect('handle:', timeout=10)
+			res = self.ble_conn.expect('handle:', timeout=10)
+		except pexpect.TIMEOUT, e:
+			print "State timeout"
+		except:
+			pass
+		
+		msg_ret = self.ble_conn.before
+		
+		if msg_ret.find("value: 08 00")!=-1:		
+			res=True
+			print "Board already in DFU mode"
+		else:
+			print "Board needs to switch in DFU mode"
+
+		return res
+		
     """
     --------------------------------------------------------------------------
      Disconnect from peer device if not done already and clean up. 
