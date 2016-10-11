@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 """
 ------------------------------------------------------------------------------
- DFU Server for Nordic nRF52 based systems.
- Conforms to nRF52_SDK 11.0 BLE_DFU requirements.
+ DFU Server for Nordic nRF51 based systems.
+ Conforms to nRF51_SDK 11.0 BLE_DFU requirements.
 ------------------------------------------------------------------------------
 """
 import os, re
@@ -135,6 +135,7 @@ class BleDfuServer(object):
         self.datfile_path = datfile_path
 
         self.ble_conn = pexpect.spawn("gatttool -b '%s' -t random --interactive" % target_mac)
+        self.ble_conn.delaybeforesend = 0.003
 
         # remove next line comment for pexpect detail tracing.
         #self.ble_conn.logfile = sys.stdout
@@ -169,10 +170,10 @@ class BleDfuServer(object):
      Example format: "Notification handle = 0x0019 value: 10 01 01"
     --------------------------------------------------------------------------
     """
-    def _dfu_wait_for_notify(self):
+    def _dfu_wait_for_notify(self, verbose=False):
 
         while True:
-            print "dfu_wait_for_notify"
+            if verbose: print "dfu_wait_for_notify"
 
             if not self.ble_conn.isalive():
                 print "connection not alive"
@@ -214,7 +215,7 @@ class BleDfuServer(object):
      Parse notification status results
     --------------------------------------------------------------------------
     """
-    def _dfu_parse_notify(self, notify):
+    def _dfu_parse_notify(self, notify, verbose=False):
 
         if len(notify) < 3:
             print "notify data length error"
@@ -223,7 +224,7 @@ class BleDfuServer(object):
         dfu_oper = notify[0]
         oper_str = DFU_oper_to_str[dfu_oper]
 
-        print notify
+        if verbose:	print notify
 
         if oper_str == "RESPONSE":
 
@@ -575,12 +576,15 @@ class BleDfuServer(object):
 		For every pkt_receipt_interval sends, wait for notification.
 		'''
 		segment_count = 1
+		time_start = time.time()
+		last_send_time = time.time()
 		for i in range(0, self.hex_size, self.pkt_payload_size):
 
 			segment = self.bin_array[i:i + self.pkt_payload_size]
 			self._dfu_data_send_cmd(segment)
 
-			print "segment #", segment_count
+			print "segment #{} of {}, dt = {}".format(segment_count, self.hex_size/self.pkt_payload_size, time.time() - last_send_time)
+			last_send_time = time.time()
 
 			if (segment_count % self.pkt_receipt_interval) == 0:
 				notify = self._dfu_wait_for_notify()
@@ -595,7 +599,8 @@ class BleDfuServer(object):
 
 			segment_count += 1
 
-		print "Upload complete"
+		duration = time.time() - time_start
+		print "Upload complete in {} minutes and {} seconds".format(int(duration / 60), int(duration % 60))
 		print "Waiting for notification"
 		# Wait for INIT DFU notification (indicates flash erase completed)
 		notify = self._dfu_wait_for_notify()
