@@ -18,7 +18,6 @@ typedef struct {
     uint16_t device_type;
     uint16_t device_rev;
     uint32_t app_version;
-    uint16_t softdevice_len;
     uint16_t softdevice_1;
     uint16_t softdevice_2;
     uint16_t crc;
@@ -28,9 +27,8 @@ static dfu_init_t dfu_init = {
     .device_type    = 0xffff,
     .device_rev     = 0xffff,
     .app_version    = 0xffffffff,
-    .softdevice_len = 0x0002,
-    .softdevice_1   = 0x005a,  // SoftDevice 7.1
-    .softdevice_2   = 0x0064,  // SoftDevice 8.0
+    .softdevice_1   = 0x0001,  
+    .softdevice_2   = 0xfffe,  // Any softdevice
     .crc            = 0x0000,
 };
 
@@ -124,6 +122,7 @@ int main(int argc, char* argv[])
     /* 
      *  Write INIT file
      */
+     printf("Writing .dat file, size: %d\n", sizeof(dfu_init_t));
     fwrite(&dfu_init, sizeof(dfu_init_t), 1, datfile);
 
     /*
