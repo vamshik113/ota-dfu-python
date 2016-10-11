@@ -104,6 +104,28 @@ def convert_array_to_hex_string(arr):
 
     return hex_str
 
+
+# Print a nice console progress bar
+def printProgress (iteration, total, prefix = '', suffix = '', decimals = 1, barLength = 100):
+    """
+    Call in a loop to create terminal progress bar
+    @params:
+        iteration   - Required  : current iteration (Int)
+        total       - Required  : total iterations (Int)
+        prefix      - Optional  : prefix string (Str)
+        suffix      - Optional  : suffix string (Str)
+        decimals    - Optional  : positive number of decimals in percent complete (Int)
+        barLength   - Optional  : character length of bar (Int)
+    """
+    formatStr       = "{0:." + str(decimals) + "f}"
+    percents        = formatStr.format(100 * (iteration / float(total)))
+    filledLength    = int(round(barLength * iteration / float(total)))
+    bar             = 'x' * filledLength + '-' * (barLength - filledLength)
+    sys.stdout.write('\r%s |%s| %s%s %s (%d of %d kb)' % (prefix, bar, percents, '%', suffix, iteration, total)),
+    if iteration == total:
+        sys.stdout.write('\n')
+    sys.stdout.flush()
+
 """
 ------------------------------------------------------------------------------
  Define the BleDfuServer class
@@ -145,8 +167,8 @@ class BleDfuServer(object):
      Connect to peripheral device.
     --------------------------------------------------------------------------
     """
-    def scan_and_connect(self):
-        print "scan_and_connect"
+    def scan_and_connect(self, verbose=False):
+        if verbose: print "scan_and_connect"
 
         try:
             self.ble_conn.expect('\[LE\]>', timeout=10)
@@ -234,7 +256,7 @@ class BleDfuServer(object):
             process_str = DFU_proc_to_str[dfu_process]
             status_str  = DFU_status_to_str[dfu_status]
 
-            print "oper: {0}, proc: {1}, status: {2}".format(oper_str, process_str, status_str)
+            if verbose: print "oper: {0}, proc: {1}, status: {2}".format(oper_str, process_str, status_str)
 
             if oper_str == "RESPONSE" and status_str == "SUCCESS":
                 return "OK"
@@ -254,21 +276,36 @@ class BleDfuServer(object):
             receipt = receipt + (byte3 << 8)
             receipt = receipt + (byte4 << 0)
 
-            print "PKT_RCPT: {0:8}".format(receipt) + " of " + str(self.hex_size)
+            # print "PKT_RCPT: {0:8}".format(receipt) + " of " + str(self.hex_size)
+            printProgress(receipt, self.hex_size, prefix = 'Progress:', suffix = 'Complete', barLength = 50)
 
             return "OK"
 
+    """
+    --------------------------------------------------------------------------
+     Wait for a notification and parse the response
+    --------------------------------------------------------------------------
+    """
+    def wait_and_parse_notify(self, verbose=False):
+        if verbose: print "Waiting for notification"
+        notify = self._dfu_wait_for_notify()
+
+        if verbose: print "Parsing notification"
+        # Check the notify status.
+        dfu_status = self._dfu_parse_notify(notify)
+        if dfu_status != "OK":
+            raise Exception("bad notification status")
 
     """
     --------------------------------------------------------------------------
      Send two bytes: command + option
     --------------------------------------------------------------------------
     """
-    def _dfu_state_set(self, opcode):
-    	print '_dfu_state_set'
+    def _dfu_state_set(self, opcode, verbose=False):
+    	if verbose: print '_dfu_state_set'
 
     	cmd = 'char-write-req 0x%04x %04x' % (self.ctrlpt_handle, opcode)
-    	print cmd
+    	if verbose: print cmd
         self.ble_conn.sendline(cmd)
 
         # Verify that command was successfully written
@@ -280,9 +317,9 @@ class BleDfuServer(object):
     #--------------------------------------------------------------------------
     # Send one byte: command
     #--------------------------------------------------------------------------
-    def _dfu_state_set_byte(self, opcode):
+    def _dfu_state_set_byte(self, opcode, verbose=False):
     	cmd = 'char-write-req 0x%04x %02x' % (self.ctrlpt_handle, opcode)
-    	print cmd
+    	if verbose: print cmd
         self.ble_conn.sendline(cmd)
 
         # Verify that command was successfully written
@@ -294,13 +331,13 @@ class BleDfuServer(object):
     #--------------------------------------------------------------------------
     # Send 3 bytes: PKT_RCPT_NOTIF_REQ with interval of 10 (0x0a)
     #--------------------------------------------------------------------------
-    def _dfu_pkt_rcpt_notif_req(self):
+    def _dfu_pkt_rcpt_notif_req(self, verbose=False):
 
         opcode = 0x080000
         opcode = opcode + (self.pkt_receipt_interval << 8)
 
         cmd = 'char-write-req 0x%04x %06x' % (self.ctrlpt_handle, opcode)
-        print cmd
+        if verbose: print cmd
         self.ble_conn.sendline(cmd)
 
         # Verify that command was successfully written
@@ -312,12 +349,12 @@ class BleDfuServer(object):
     #--------------------------------------------------------------------------
     # Send an array of bytes: request mode
     #--------------------------------------------------------------------------
-    def _dfu_data_send_req(self, data_arr):
+    def _dfu_data_send_req(self, data_arr, verbose=False):
         hex_str = convert_array_to_hex_string(data_arr)
-        #print hex_str
-        print '_dfu_data_send_req'
+
+        if verbose: print '_dfu_data_send_req'
         cmd = 'char-write-req 0x%04x %s' % (self.data_handle, hex_str)
-        print cmd
+        if verbose: print cmd
         self.ble_conn.sendline(cmd)
 
         # Verify that data was successfully written
@@ -326,31 +363,25 @@ class BleDfuServer(object):
         except pexpect.TIMEOUT, e:
             print "Data timeout"
 
-	"""
-	msg_ret = self.ble_conn.before
-	if msg_ret!="":
-		print msg_ret
-	"""
-
     #--------------------------------------------------------------------------
     # Send an array of bytes: command mode
     #--------------------------------------------------------------------------
-    def _dfu_data_send_cmd(self, data_arr):
+    def _dfu_data_send_cmd(self, data_arr, verbose=False):
         hex_str = convert_array_to_hex_string(data_arr)
-        #print hex_str
+        if verbose: print hex_str
         self.ble_conn.sendline('char-write-cmd 0x%04x %s' % (self.data_handle, hex_str))
 
     #--------------------------------------------------------------------------
     # Enable DFU Control Point CCCD (Notifications)
     #--------------------------------------------------------------------------
-    def _dfu_enable_cccd(self, alreadyDfuMode):
+    def _dfu_enable_cccd(self, alreadyDfuMode, verbose=False):
 	handle=self.ctrlpt_cccd_handle
 	if(alreadyDfuMode==False):
 	   handle=self.ctrlpt_cccd_handle_buttonless
-        print "_dfu_enable_cccd"
+        if verbose: print "_dfu_enable_cccd"
 
        	cmd = 'char-write-req 0x%04x %s' % (self.ctrlpt_cccd_handle, '0100')
-       	print cmd
+       	if verbose: print cmd
         self.ble_conn.sendline(cmd)
         #self.ble_conn.sendline('char-write-req 0x%02x %s' % (self.ctrlpt_cccd_handle, cccd_enable_value_hex_string))
 
@@ -363,9 +394,9 @@ class BleDfuServer(object):
     #--------------------------------------------------------------------------
     # Send the Init info (*.dat file contents) to peripheral device.
     #--------------------------------------------------------------------------
-    def _dfu_send_init(self):
+    def _dfu_send_init(self, verbose=False):
 
-        print "dfu_send_info"
+        if verbose: print "dfu_send_info"
 
         # Open the DAT file and create array of its contents
         bin_array = array('B', open(self.datfile_path, 'rb').read())
@@ -491,16 +522,16 @@ class BleDfuServer(object):
         if data_handle:
             self.data_handle = data_handle
     
-    def switch_in_dfu_mode(self):
+    def switch_in_dfu_mode(self, verbose=False):
 
 		#Enable notifications 
 		cmd = 'char-write-req 0x%02x %02x' % (self.ctrlpt_cccd_handle, 1)
-		print cmd
+		if verbose:	print cmd
 		self.ble_conn.sendline(cmd)
 
 		#Reset the board in DFU mode. After reset the board will be disconnected
 		cmd = 'char-write-req 0x%02x 0104' % (self.ctrlpt_handle)
-		print cmd
+		if verbose:	print cmd
 		self.ble_conn.sendline(cmd)
 
 		time.sleep(0.5)
@@ -509,8 +540,8 @@ class BleDfuServer(object):
 		#self._dfu_state_set(0x0104)
 
 		#Reconnect the board.
-		ret = self.scan_and_connect()
-		print "Connected " + str(ret)
+		ret = self.scan_and_connect(verbose=verbose)
+		if verbose: print "Connected " + str(ret)
         
 
     """
@@ -518,32 +549,26 @@ class BleDfuServer(object):
      Send the binary firmware image to peripheral device.
     --------------------------------------------------------------------------
     """
-    def dfu_send_image(self):
-		print "dfu_send_image"
+    def dfu_send_image(self, verbose=False):
+		if verbose: print "dfu_send_image"
 
 		# if not self._check_DFU_mode():
 		self.switch_in_dfu_mode()	
 
 		print "Enable Notifications in DFU mode"
-		self._dfu_enable_cccd(True)
+		self._dfu_enable_cccd(True, verbose=verbose)
 
 		# Send 'START DFU' + Application Command
-		self._dfu_state_set(0x0104)
+		self._dfu_state_set(0x0104, verbose=verbose)
 
 		# Transmit binary image size
-		hex_size_array_lsb = convert_uint32_to_array(len(self.bin_array))
 		print "Sending hex file size"
+		hex_size_array_lsb = convert_uint32_to_array(len(self.bin_array))
 		self._dfu_data_send_req(hex_size_array_lsb)
 
-		print "Waiting for notification"
-		# Wait for INIT DFU notification (indicates flash erase completed)
-		notify = self._dfu_wait_for_notify()
-
-		print "Parsing notification"
-		# Check the notify status.
-		dfu_status = self._dfu_parse_notify(notify)
-		if dfu_status != "OK":
-			raise Exception("bad notification status")
+		# Wait for response to Image Size
+		print "Waiting for Image Size notification"
+		self.wait_and_parse_notify(verbose=verbose)
 
 		# Send 'INIT DFU' Command
 		self._dfu_state_set(0x0200)
@@ -554,15 +579,9 @@ class BleDfuServer(object):
 		# Send 'INIT DFU' + Complete Command
 		self._dfu_state_set(0x0201)
 
-		print "Waiting for notification"
+		print "Waiting for INIT DFU notification"
 		# Wait for INIT DFU notification (indicates flash erase completed)
-		notify = self._dfu_wait_for_notify()
-
-		print "Parsing notification"
-		# Check the notify status.
-		dfu_status = self._dfu_parse_notify(notify)
-		if dfu_status != "OK":
-			raise Exception("bad notification status")
+		self.wait_and_parse_notify(verbose=verbose)
 
 		# Send packet receipt notification interval (currently 10)
 		self._dfu_pkt_rcpt_notif_req()
@@ -578,13 +597,14 @@ class BleDfuServer(object):
 		segment_count = 1
 		time_start = time.time()
 		last_send_time = time.time()
+		print "Begin DFU"
 		for i in range(0, self.hex_size, self.pkt_payload_size):
 
 			segment = self.bin_array[i:i + self.pkt_payload_size]
 			self._dfu_data_send_cmd(segment)
 
-			print "segment #{} of {}, dt = {}".format(segment_count, self.hex_size/self.pkt_payload_size, time.time() - last_send_time)
-			last_send_time = time.time()
+			# print "segment #{} of {}, dt = {}".format(segment_count, self.hex_size/self.pkt_payload_size, time.time() - last_send_time)
+			# last_send_time = time.time()
 
 			if (segment_count % self.pkt_receipt_interval) == 0:
 				notify = self._dfu_wait_for_notify()
@@ -600,34 +620,23 @@ class BleDfuServer(object):
 			segment_count += 1
 
 		duration = time.time() - time_start
-		print "Upload complete in {} minutes and {} seconds".format(int(duration / 60), int(duration % 60))
-		print "Waiting for notification"
-		# Wait for INIT DFU notification (indicates flash erase completed)
-		notify = self._dfu_wait_for_notify()
-
-		print "Parsing notification"
-		# Check the notify status.
-		dfu_status = self._dfu_parse_notify(notify)
-		if dfu_status != "OK":
-			raise Exception("bad notification status")
+		print "\nUpload complete in {} minutes and {} seconds".format(int(duration / 60), int(duration % 60))
+		print "Waiting for DFU complete notification"
+		# Wait for DFU complete notification
+		self.wait_and_parse_notify(verbose=verbose)
 
 		# Send Validate Command
 		self._dfu_state_set_byte(Commands.VALIDATE_FIRMWARE_IMAGE)
 
-		print "Waiting for notification"
-		# Wait for INIT DFU notification (indicates flash erase completed)
-		notify = self._dfu_wait_for_notify()
-
-		print "Parsing notification"
-		# Check the notify status.
-		dfu_status = self._dfu_parse_notify(notify)
-		if dfu_status != "OK":
-			raise Exception("bad notification status")
+		print "Waiting for Firmware Validation notification"
+		# Wait for Firmware Validation notification
+		self.wait_and_parse_notify(verbose=verbose)
 
 		# Wait a bit for copy on the peer to be finished
-		# time.sleep(1)
+		time.sleep(1)
 
 		# Send Activate and Reset Command
+		print "Activate and reset"
 		self._dfu_state_set_byte(Commands.ACTIVATE_FIRMWARE_AND_RESET)
 		
 		"""
