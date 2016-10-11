@@ -1,4 +1,8 @@
-Python nRF52 DFU Server
+Python nRF51 DFU Server
+============================
+
+This is my fork of astronomer80's fork of foldedtoad's Python OTA DFU utility. I've modified it to fit my application
+
 ============================
 
 A python script for bluez gatttool using pexpect to achive Device Firmware Updates (DFU) to the nRF52.  
@@ -8,7 +12,7 @@ The host system is assumed to be some flavor of Linux, and was developed with th
 This is probably not a beginner's project.  
 Peripheral firmware updating is a complex process, requiring several critical development support steps, not covered here, before the *dfu.py* utility can be used.
 
-It is assumed that your peripheral firmware has been build to Nordic's SDK8.x + SoftDevice 8.x  
+It is assumed that your peripheral firmware has been build to Nordic's SDK11 + SoftDevice 2.0.1  
 The target peripheral firmware should also include some variation of Nordic's DFU support.
 
 How you get the target periheral to enter DFU-mode (e.g. advertizing *DfuTarg*) is not handled here.    
@@ -31,8 +35,8 @@ Prerequisite
 
 Firmware Build Requirement
 --------------------------
-* Your nRF52 firmware build method will produce either a firmware hex or bin file named *application.hex* or *application.bin*.  This naming convention is per Nordics DFU specification, which is use by this DFU server as well as the Android Master Control Panel DFU, and iOS DFU app.  
-* Your nRF52 firmware build method will produce an Init file (aka *application.dat*).  Again, this is per Nordic's naming conventions. 
+* Your nRF51 firmware build method will produce either a firmware hex or bin file named *application.hex* or *application.bin*.  This naming convention is per Nordics DFU specification, which is use by this DFU server as well as the Android Master Control Panel DFU, and iOS DFU app.  
+* Your nRF51 firmware build method will produce an Init file (aka *application.dat*).  Again, this is per Nordic's naming conventions. 
 
 The *nrfutil* Utility
 ---------------------
