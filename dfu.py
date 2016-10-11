@@ -119,7 +119,7 @@ class BleDfuServer(object):
     ctrlpt_cccd_handle = 0x11
     data_handle        = 0x0e
 
-    pkt_receipt_interval = 10
+    pkt_receipt_interval = 5
     pkt_payload_size     = 20
 
     """
@@ -135,7 +135,7 @@ class BleDfuServer(object):
         self.datfile_path = datfile_path
 
         self.ble_conn = pexpect.spawn("gatttool -b '%s' -t random --interactive" % target_mac)
-        self.ble_conn.delaybeforesend = 0.003
+        self.ble_conn.delaybeforesend = None
 
         # remove next line comment for pexpect detail tracing.
         #self.ble_conn.logfile = sys.stdout
