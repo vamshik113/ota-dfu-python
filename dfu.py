@@ -121,7 +121,7 @@ def printProgress (iteration, total, prefix = '', suffix = '', decimals = 1, bar
     percents        = formatStr.format(100 * (iteration / float(total)))
     filledLength    = int(round(barLength * iteration / float(total)))
     bar             = 'x' * filledLength + '-' * (barLength - filledLength)
-    sys.stdout.write('\r%s |%s| %s%s %s (%d of %d kb)' % (prefix, bar, percents, '%', suffix, iteration, total)),
+    sys.stdout.write('\r%s |%s| %s%s %s (%d of %d bytes)' % (prefix, bar, percents, '%', suffix, iteration, total)),
     if iteration == total:
         sys.stdout.write('\n')
     sys.stdout.flush()
@@ -467,8 +467,8 @@ class BleDfuServer(object):
         if resetHandle or self.ctrlpt_handle:
             if resetHandle:
                 print "Switching device into DFU mode"
-                print 'char-write-cmd 0x%02s %02x' % (resetHandle, 1)
-                self.ble_conn.sendline('char-write-cmd 0x%02s %02x' % (resetHandle, 1))
+                cmd = 'char-write-cmd 0x%02s %02x' % (resetHandle, 1)
+                self.ble_conn.sendline(cmd)
                 time.sleep(0.2)
         
                 print "Node is being restarted"
@@ -552,8 +552,9 @@ class BleDfuServer(object):
     def dfu_send_image(self, verbose=False):
 		if verbose: print "dfu_send_image"
 
-		# if not self._check_DFU_mode():
-		self.switch_in_dfu_mode()	
+		if not self._check_DFU_mode():
+			print "Switching to DFU mode"
+			self.switch_in_dfu_mode()	
 
 		print "Enable Notifications in DFU mode"
 		self._dfu_enable_cccd(True, verbose=verbose)
@@ -644,21 +645,25 @@ class BleDfuServer(object):
 			Return True is already in DFU mode
 		--------------------------------------------------------------------------
 		"""
-    def _check_DFU_mode(self):
+    def _check_DFU_mode(self, verbose=False):
 		print "Checking DFU State..."
 		res=False
-		self.ble_conn.sendline('char-read-uuid %s' % UUID.DFU_Version)
-		
-		#Skip two rows		
+		cmd = 'char-read-uuid %s' % UUID.DFU_Version
+		if verbose: print cmd
+		self.ble_conn.sendline(cmd)
+
+		# Skip two rows		
 		try:
-			res = self.ble_conn.expect('handle:', timeout=10)
-			res = self.ble_conn.expect('handle:', timeout=10)
+			res = self.ble_conn.expect('handle:.*', timeout=10)
+			# res = self.ble_conn.expect('handle:', timeout=10)	
 		except pexpect.TIMEOUT, e:
 			print "State timeout"
 		except:
 			pass
 		
-		msg_ret = self.ble_conn.before
+		msg_ret = self.ble_conn.after
+
+		# print "msg ret = ", msg_ret
 		
 		if msg_ret.find("value: 08 00")!=-1:		
 			res=True
@@ -715,7 +720,16 @@ def main():
     ------------------------------------------------------------------------------
     """
 
-    print "DFU Server start"
+    init_msg =  """ 
+    ================================
+    ==                            ==
+    ==         DFU Server         ==
+    ==                            ==
+    ================================ 
+    		"""
+
+    # print "DFU Server start"
+    print init_msg
 
     try:
         parser = optparse.OptionParser(usage='%prog -f <hex_file> -a <dfu_target_address>\n\nExample:\n\tdfu.py -f application.hex -d application.dat -a cd:e3:4a:47:1c:e4',
