@@ -90,8 +90,7 @@ Example of *dfu.py* Output
     Waiting for Firmware Validation notification
     Activate and reset
     DFU Server done
- 
-
+    
 
 **LINKS**  
 https://infocenter.nordicsemi.com/index.jsp?topic=%2Fcom.nordic.infocenter.sdk5.v11.0.0%2Fexamples_ble_dfu.html&cp=4_0_1_4_2_3
