@@ -64,33 +64,34 @@ To figure out the address of DfuTarg do a 'hcitool lescan' -
 
 
 Example of *dfu.py* Output
-------------------------
-                                                                                                              
-        ================================                                                                      
-        ==                            ==                                                                      
-        ==         DFU Server         ==                                                                      
-        ==                            ==                                                                      
-        ================================                                                                      
-                                                                                                              
-    Sending file application.bin to D3:14:97:B5:C8:FE                                                 
-    bin array size:  64608                                                                                    
-    Checking DFU State...                                                                                     
-    Board needs to switch in DFU mode                                                                         
-    Switching to DFU mode                                                                                     
-    Enable Notifications in DFU mode                                                                          
-    Sending hex file size                                                                                     
-    Waiting for Image Size notification                                                                       
-    Waiting for INIT DFU notification                                                                         
-    Begin DFU                                                                                                 
-    Progress: |xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx| 100.0% Complete (64600 of 64608 bytes)     
-    Upload complete in 0 minutes and 15 seconds                                                               
-    Waiting for DFU complete notification                                                                     
-    Waiting for Firmware Validation notification                                                              
-    Activate and reset                                                                                        
-    DFU Server done  
+------------------------                                                                                            
+     
+        ================================
+        ==                            ==
+        ==         DFU Server         ==
+        ==                            ==
+        ================================ 
+        
+    Sending file application.bin to D3:14:97:B5:C8:FE
+    bin array size:  60788
+    Checking DFU State...
+    Board needs to switch in DFU mode
+    Switching to DFU mode
+    Enable Notifications in DFU mode
+    Sending hex file size
+    Waiting for Image Size notification
+    Waiting for INIT DFU notification
+    Begin DFU
+    Progress: |xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx| 100.0% Complete (60788 of 60788 bytes)
+    
+    Upload complete in 0 minutes and 14 seconds
+    segments sent: 3040
+    Waiting for DFU complete notification
+    Waiting for Firmware Validation notification
+    Activate and reset
+    DFU Server done
+ 
 
-**NOTE:**  
-64600 of 64608 bytes happens because the progress update depends on the packet receipt notification and it's not set to notify on every packet atm (to speed up transfer). In reality, all data is sent. I'll probably fix this later on.
 
 **LINKS**  
 https://infocenter.nordicsemi.com/index.jsp?topic=%2Fcom.nordic.infocenter.sdk5.v11.0.0%2Fexamples_ble_dfu.html&cp=4_0_1_4_2_3
