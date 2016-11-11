@@ -10,6 +10,7 @@ import sys
 import pexpect
 import optparse
 import time
+import math
 
 from intelhex import IntelHex
 from array    import array
@@ -294,7 +295,7 @@ class BleDfuServer(object):
         # Check the notify status.
         dfu_status = self._dfu_parse_notify(notify)
         if dfu_status != "OK":
-            raise Exception("bad notification status")
+            raise Exception("bad notification status: {}".format(dfu_status))
 
     """
     --------------------------------------------------------------------------
@@ -420,6 +421,7 @@ class BleDfuServer(object):
 
         if extent == ".bin":
             self.bin_array = array('B', open(self.hexfile_path, 'rb').read())
+
             self.hex_size = len(self.bin_array)
             print "bin array size: ", self.hex_size
             return
@@ -584,7 +586,7 @@ class BleDfuServer(object):
 		# Wait for INIT DFU notification (indicates flash erase completed)
 		self.wait_and_parse_notify(verbose=verbose)
 
-		# Send packet receipt notification interval (currently 10)
+		# Send packet receipt notification interval
 		self._dfu_pkt_rcpt_notif_req()
 
 		# Send 'RECEIVE FIRMWARE IMAGE' command to set DFU in firmware receive state. 
@@ -595,7 +597,8 @@ class BleDfuServer(object):
 		Each segment is pkt_payload_size bytes long.
 		For every pkt_receipt_interval sends, wait for notification.
 		'''
-		segment_count = 1
+		segment_count = 0
+		segment_total = int(math.ceil(self.hex_size/float(self.pkt_payload_size)))
 		time_start = time.time()
 		last_send_time = time.time()
 		print "Begin DFU"
@@ -603,11 +606,22 @@ class BleDfuServer(object):
 
 			segment = self.bin_array[i:i + self.pkt_payload_size]
 			self._dfu_data_send_cmd(segment)
+			segment_count += 1
 
-			# print "segment #{} of {}, dt = {}".format(segment_count, self.hex_size/self.pkt_payload_size, time.time() - last_send_time)
+			# print "segment #{} of {}, dt = {}".format(segment_count, segment_total, time.time() - last_send_time)
 			# last_send_time = time.time()
 
-			if (segment_count % self.pkt_receipt_interval) == 0:
+			if (segment_count == segment_total):
+				printProgress(self.hex_size, self.hex_size, prefix = 'Progress:', suffix = 'Complete', barLength = 50)
+
+				duration = time.time() - time_start
+				print "\nUpload complete in {} minutes and {} seconds".format(int(duration / 60), int(duration % 60))
+				print "segments sent: {}".format(segment_count)
+				print "Waiting for DFU complete notification"
+				# Wait for DFU complete notification
+				self.wait_and_parse_notify(verbose=verbose)
+
+			elif (segment_count % self.pkt_receipt_interval) == 0:
 				notify = self._dfu_wait_for_notify()
 
 				if notify == None:
@@ -616,16 +630,8 @@ class BleDfuServer(object):
 				dfu_status = self._dfu_parse_notify(notify)
 
 				if dfu_status == None or dfu_status != "OK":
-					raise Exception("bad notification status")
-
-			segment_count += 1
-
-		duration = time.time() - time_start
-		print "\nUpload complete in {} minutes and {} seconds".format(int(duration / 60), int(duration % 60))
-		print "Waiting for DFU complete notification"
-		# Wait for DFU complete notification
-		self.wait_and_parse_notify(verbose=verbose)
-
+					raise Exception("bad notification status: {}".format(dfu_status))
+		
 		# Send Validate Command
 		self._dfu_state_set_byte(Commands.VALIDATE_FIRMWARE_IMAGE)
 
