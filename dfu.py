@@ -126,12 +126,14 @@ def main():
         ble_dfu.input_setup()
 
         # Connect to peer device.
-        print "Connecting to device"
         if ble_dfu.scan_and_connect():
-            ble_dfu.start()
+            if not ble_dfu.check_DFU_mode():
+                print "Need to switch to DFU mode"
+                success = ble_dfu.switch_to_dfu_mode()
+                if not success:
+                    print "Couldn't reconnect"
 
-            # Wait to receive the disconnect event from peripheral device.
-            time.sleep(1)
+            ble_dfu.start()
     
             # Disconnect from peer device if not done already and clean up. 
             ble_dfu.disconnect()

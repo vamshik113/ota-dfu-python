@@ -105,7 +105,7 @@ class BleSecureDfuController(object):
             print 'Packet handle: 0x%04x' % (self.data_handle)
 
         # Subscribe to notifications from Control Point characteristic
-        self._dfu_enable_notifications()
+        self._enable_notifications(self.ctrlpt_cccd_handle)
 
         # Set the Packet Receipt Notification interval
         prn = uint16_to_bytes_le(self.pkt_receipt_interval)
@@ -151,6 +151,8 @@ class BleSecureDfuController(object):
     def scan_and_connect(self):
         if verbose: print "scan_and_connect"
 
+        print "Connecting to %s" % (self.target_mac) 
+
         try:
             self.ble_conn.expect('\[LE\]>', timeout=10)
         except pexpect.TIMEOUT, e:
@@ -173,6 +175,50 @@ class BleSecureDfuController(object):
     def disconnect(self):
         self.ble_conn.sendline('exit')
         self.ble_conn.close()
+
+    def check_DFU_mode(self):
+        print "Checking DFU State..."
+
+        self.ble_conn.sendline('characteristics')
+
+        dfu_mode = False
+
+        try:
+            self.ble_conn.expect([self.UUID_BUTTONLESS], timeout=2)
+        except pexpect.TIMEOUT, e:
+            dfu_mode = True
+
+        return dfu_mode
+
+    def switch_to_dfu_mode(self):
+        (_, bl_value_handle, bl_cccd_handle) = self._get_handles(self.UUID_BUTTONLESS)
+
+        self._enable_notifications(bl_cccd_handle)
+
+        # Reset the board in DFU mode. After reset the board will be disconnected
+        cmd = 'char-write-req 0x%04x 01' % (bl_value_handle)
+        self.ble_conn.sendline(cmd)
+
+        # Wait some time for board to reboot
+        time.sleep(0.5)
+
+        self.disconnect()
+
+        # Increase the mac address by one and reconnect
+        self._target_mac_increase()
+        self.ble_conn = pexpect.spawn("gatttool -b '%s' -t random --interactive" % self.target_mac)
+        self.ble_conn.delaybeforesend = 0
+        return self.scan_and_connect()
+
+    def _target_mac_increase(self):
+        parts = list(re.match('(..):(..):(..):(..):(..):(..)', self.target_mac).groups())
+        parts[5] = hex(int(parts[5], 16) + 1)
+        parts[5] = parts[5][len(parts[5])-2:len(parts[5])].upper()
+
+        # TODO: Handle case where the last byte is FF
+        #       Then we need to increase byte 4 as well
+
+        self.target_mac = ':'.join(parts)
 
     # --------------------------------------------------------------------------
     #  Fetch handles for a given UUID.
@@ -326,10 +372,10 @@ class BleSecureDfuController(object):
     # --------------------------------------------------------------------------
     #  Enable notifications from the Control Point Handle
     # --------------------------------------------------------------------------
-    def _dfu_enable_notifications(self):
-        if verbose: print '_dfu_enable_notifications'
+    def _enable_notifications(self, cccd_handle):
+        if verbose: print '_enable_notifications'
 
-        cmd  = 'char-write-req 0x%04x %s' % (self.ctrlpt_cccd_handle, '0100')
+        cmd  = 'char-write-req 0x%04x %s' % (cccd_handle, '0100')
 
         if verbose: print cmd
 
