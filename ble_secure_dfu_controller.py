@@ -1,12 +1,11 @@
-import pexpect
 import math
-import re
 import os
+import pexpect
+import re
 import time
 
 from array import array
-
-from util import *
+from util  import *
 
 verbose = False
 
@@ -81,13 +80,13 @@ class BleSecureDfuController(object):
     ctrlpt_cccd_handle   = 0
     data_handle          = 0
 
-    pkt_receipt_interval = 5
+    pkt_receipt_interval = 10
     pkt_payload_size     = 20
 
-    def __init__(self, target_mac, hexfile_path, datfile_path):
+    def __init__(self, target_mac, firmware_path, datfile_path):
         self.target_mac = target_mac
         
-        self.hexfile_path = hexfile_path
+        self.firmware_path = firmware_path
         self.datfile_path = datfile_path
 
         self.ble_conn = pexpect.spawn("gatttool -b '%s' -t random --interactive" % target_mac)
@@ -121,25 +120,27 @@ class BleSecureDfuController(object):
     #    Bin: read binfile into bin_array
     # --------------------------------------------------------------------------
     def input_setup(self):
-        print "Sending file " + os.path.split(self.hexfile_path)[1] + " to " + self.target_mac
+        print "Sending file " + os.path.split(self.firmware_path)[1] + " to " + self.target_mac
 
-        if self.hexfile_path == None:
+        if self.firmware_path == None:
             raise Exception("input invalid")
 
-        name, extent = os.path.splitext(self.hexfile_path)
+        name, extent = os.path.splitext(self.firmware_path)
 
         if extent == ".bin":
-            self.bin_array = array('B', open(self.hexfile_path, 'rb').read())
+            self.bin_array = array('B', open(self.firmware_path, 'rb').read())
 
-            self.hex_size = len(self.bin_array)
-            print "Binary imge size: %d" % self.hex_size
+            self.image_size = len(self.bin_array)
+            print "Binary imge size: %d" % self.image_size
+            print "Binary CRC32: %d" % crc32_unsigned(array_to_hex_string(self.bin_array))
+
             return
 
         if extent == ".hex":
-            intelhex = IntelHex(self.hexfile_path)
+            intelhex = IntelHex(self.firmware_path)
             self.bin_array = intelhex.tobinarray()
-            self.hex_size = len(self.bin_array)
-            print "bin array size: ", self.hex_size
+            self.image_size = len(self.bin_array)
+            print "bin array size: ", self.image_size
             return
 
         raise Exception("input invalid")
@@ -148,23 +149,21 @@ class BleSecureDfuController(object):
     # Perform a scan and connect via gatttool.
     # Will return True if a connection was established, False otherwise
     # --------------------------------------------------------------------------
-    def scan_and_connect(self):
+    def scan_and_connect(self, timeout=2):
         if verbose: print "scan_and_connect"
 
         print "Connecting to %s" % (self.target_mac) 
 
         try:
-            self.ble_conn.expect('\[LE\]>', timeout=10)
+            self.ble_conn.expect('\[LE\]>', timeout=timeout)
         except pexpect.TIMEOUT, e:
-            print "Connect timeout"
             return False
 
         self.ble_conn.sendline('connect')
 
         try:
-            res = self.ble_conn.expect('.*Connection successful.*', timeout=10)
+            res = self.ble_conn.expect('.*Connection successful.*', timeout=timeout)
         except pexpect.TIMEOUT, e:
-            print "Connect timeout"
             return False
 
         return True
@@ -202,23 +201,17 @@ class BleSecureDfuController(object):
         # Wait some time for board to reboot
         time.sleep(0.5)
 
-        self.disconnect()
-
         # Increase the mac address by one and reconnect
-        self._target_mac_increase()
-        self.ble_conn = pexpect.spawn("gatttool -b '%s' -t random --interactive" % self.target_mac)
-        self.ble_conn.delaybeforesend = 0
+        self.target_mac_increase(1)
         return self.scan_and_connect()
 
-    def _target_mac_increase(self):
-        parts = list(re.match('(..):(..):(..):(..):(..):(..)', self.target_mac).groups())
-        parts[5] = hex(int(parts[5], 16) + 1)
-        parts[5] = parts[5][len(parts[5])-2:len(parts[5])].upper()
+    def target_mac_increase(self, inc):
+        self.target_mac = uint_to_mac_string(mac_string_to_uint(self.target_mac) + inc)
 
-        # TODO: Handle case where the last byte is FF
-        #       Then we need to increase byte 4 as well
-
-        self.target_mac = ':'.join(parts)
+        # Re-start gatttool with the new address
+        self.disconnect()
+        self.ble_conn = pexpect.spawn("gatttool -b '%s' -t random --interactive" % self.target_mac)
+        self.ble_conn.delaybeforesend = 0
 
     # --------------------------------------------------------------------------
     #  Fetch handles for a given UUID.
@@ -444,55 +437,71 @@ class BleSecureDfuController(object):
         (proc, res, max_size, offset, crc32) = self._wait_and_parse_notify()
 
         # Split the firmware into multiple objects
-        num_objects = int(math.ceil(self.hex_size / float(max_size)))
-        print "Max object size: %d, num objects: %d, offset: %d, total size: %d" % (max_size, num_objects, offset, self.hex_size)
+        num_objects = int(math.ceil(self.image_size / float(max_size)))
+        print "Max object size: %d, num objects: %d, offset: %d, total size: %d" % (max_size, num_objects, offset, self.image_size)
 
         time_start = time.time()
         last_send_time = time.time()
 
-        for j in range((offset/max_size)*max_size, self.hex_size, max_size):
-            # print "Sending object {} of {}".format(j/max_size+1, num_objects)
-
-            if offset != self.hex_size:
-                if True or offset == 0 or offset > self.hex_size:
-                    # Create Data Object
-                    size = min(max_size, self.hex_size - j)
-                    self._dfu_send_command(Procedures.CREATE, [Procedures.PARAM_DATA] + uint32_to_bytes_le(size))
-                    self._wait_and_parse_notify()
-
-                segment_count = 0
-                segment_total = int(math.ceil(min(max_size, self.hex_size-j)/float(self.pkt_payload_size)))
-
-                segment_begin = j
-                segment_end = min(j+max_size, self.hex_size)
-
-                for i in range(segment_begin, segment_end, self.pkt_payload_size):
-                    num_bytes = min(self.pkt_payload_size, segment_end - i)
-                    segment = self.bin_array[i:i + num_bytes]
-                    self._dfu_send_data(segment)
-                    segment_count += 1
-
-                    # print "j: {} i: {}, end: {}, bytes: {}, size: {} segment #{} of {}".format(
-                    #     j, i, segment_end, num_bytes, self.hex_size, segment_count, segment_total)
-
-                    if (segment_count % self.pkt_receipt_interval) == 0:
-                        (proc, res, offset, crc32) = self._wait_and_parse_notify()
-                        
-                        if res != Results.SUCCESS:
-                            raise Exception("bad notification status: {}".format(Results.to_string(res)))
-
-                        print_progress(offset, self.hex_size, prefix = 'Progress:', suffix = 'Complete', barLength = 50)
-
-                # Calculate CRC
-                self._dfu_send_command(Procedures.CALC_CHECKSUM)
-                self._wait_and_parse_notify()
-
-            # Execute command
-            self._dfu_send_command(Procedures.EXECUTE)
-            self._wait_and_parse_notify()
+        obj_offset = (offset/max_size)*max_size
+        while(obj_offset < self.image_size):
+            # print "\nSending object {} of {}".format(obj_offset/max_size+1, num_objects)
+            obj_offset += self._dfu_send_object(obj_offset, max_size)
 
         # Image uploaded successfully, update the progress bar
-        print_progress(self.hex_size, self.hex_size, prefix = 'Progress:', suffix = 'Complete', barLength = 50)
+        print_progress(self.image_size, self.image_size, prefix = 'Progress:', suffix = 'Complete', barLength = 50)
 
         duration = time.time() - time_start
         print "\nUpload complete in {} minutes and {} seconds".format(int(duration / 60), int(duration % 60))
+
+    # --------------------------------------------------------------------------
+    #  Send a single data object of given size and offset.
+    # --------------------------------------------------------------------------
+    def _dfu_send_object(self, offset, obj_max_size):
+        if offset != self.image_size:
+            if offset == 0 or offset >= obj_max_size or crc32 != crc32_unsigned(self.bin_array[0:offset]):
+                # Create Data Object
+                size = min(obj_max_size, self.image_size - offset)
+                self._dfu_send_command(Procedures.CREATE, [Procedures.PARAM_DATA] + uint32_to_bytes_le(size))
+                self._wait_and_parse_notify()
+
+            segment_count = 0
+            segment_total = int(math.ceil(min(obj_max_size, self.image_size-offset)/float(self.pkt_payload_size)))
+
+            segment_begin = offset
+            segment_end = min(offset+obj_max_size, self.image_size)
+
+            for i in range(segment_begin, segment_end, self.pkt_payload_size):
+                num_bytes = min(self.pkt_payload_size, segment_end - i)
+                segment = self.bin_array[i:i + num_bytes]
+                self._dfu_send_data(segment)
+                segment_count += 1
+
+                # print "j: {} i: {}, end: {}, bytes: {}, size: {} segment #{} of {}".format(
+                #     offset, i, segment_end, num_bytes, self.image_size, segment_count, segment_total)
+
+                if (segment_count % self.pkt_receipt_interval) == 0:
+                    (proc, res, offset, crc32) = self._wait_and_parse_notify()
+                    
+                    if res != Results.SUCCESS:
+                        raise Exception("bad notification status: {}".format(Results.to_string(res)))
+
+                    if crc32 != crc32_unsigned(self.bin_array[0:offset]):
+                        # Something went wrong, need to re-transmit this object
+                        return 0 
+
+                    print_progress(offset, self.image_size, prefix = 'Progress:', suffix = 'Complete', barLength = 50)
+
+            # Calculate CRC
+            self._dfu_send_command(Procedures.CALC_CHECKSUM)
+            (proc, res, offset, crc32) = self._wait_and_parse_notify()
+            if(crc32 != crc32_unsigned(self.bin_array[0:offset])):
+                # Need to re-transmit object
+                return 0
+
+        # Execute command
+        self._dfu_send_command(Procedures.EXECUTE)
+        self._wait_and_parse_notify()
+
+        # If everything executed correctly, return amount of bytes transfered
+        return obj_max_size

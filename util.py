@@ -1,4 +1,6 @@
 import sys
+import binascii
+import re
 
 def bytes_to_uint32_le(bytes):
     return  (int(bytes[3], 16) << 24) | (int(bytes[2], 16) << 16) | (int(bytes[1], 16) <<  8) | (int(bytes[0], 16) <<  0)
@@ -22,6 +24,26 @@ def array_to_hex_string(arr):
 
     return hex_str
 
+def crc32_unsigned(bytestring):
+    return binascii.crc32(bytestring) % (1 << 32)
+
+def mac_string_to_uint(mac):
+    parts = list(re.match('(..):(..):(..):(..):(..):(..)', mac).groups())
+    ints = map(lambda x: int(x, 16), parts)
+
+    res = 0
+    for i in range(0, len(ints)):
+        res += (ints[len(ints)-1 - i] << 8*i)
+
+    return res
+
+def uint_to_mac_string(mac):
+    ints = [0, 0, 0, 0, 0, 0]
+    for i in range(0, len(ints)):
+        ints[len(ints)-1 - i] = (mac >> 8*i) & 0xff
+
+    return ':'.join(map(lambda x: '{:02x}'.format(x).upper(), ints))
+
 # Print a nice console progress bar
 def print_progress(iteration, total, prefix = '', suffix = '', decimals = 1, barLength = 100):
     """
@@ -41,4 +63,4 @@ def print_progress(iteration, total, prefix = '', suffix = '', decimals = 1, bar
     sys.stdout.write('\r%s |%s| %s%s %s (%d of %d bytes)' % (prefix, bar, percents, '%', suffix, iteration, total)),
     if iteration == total:
         sys.stdout.write('\n')
-    sys.stdout.flush()  
+    sys.stdout.flush()

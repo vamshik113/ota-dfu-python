@@ -125,18 +125,26 @@ def main():
         # Initialize inputs
         ble_dfu.input_setup()
 
-        # Connect to peer device.
+        # Connect to peer device. Assume application mode.
         if ble_dfu.scan_and_connect():
             if not ble_dfu.check_DFU_mode():
                 print "Need to switch to DFU mode"
                 success = ble_dfu.switch_to_dfu_mode()
                 if not success:
                     print "Couldn't reconnect"
+        else:
+            # The device might already be in DFU mode (MAC + 1)
+            ble_dfu.target_mac_increase(1)
 
-            ble_dfu.start()
-    
-            # Disconnect from peer device if not done already and clean up. 
-            ble_dfu.disconnect()
+            # Try connection with new address
+            print "Couldn't connect, will try DFU MAC"
+            if not ble_dfu.scan_and_connect():
+                raise Exception("Can't connect to device")
+
+        ble_dfu.start()
+
+        # Disconnect from peer device if not done already and clean up. 
+        ble_dfu.disconnect()
 
     except Exception, e:
         # print traceback.format_exc()
