@@ -321,6 +321,9 @@ class BleSecureDfuController(object):
         if verbose: print "Waiting for notification"
         notify = self._dfu_wait_for_notify()
 
+        if notify is None:
+            raise Exception("No notification received")
+
         if verbose: print "Parsing notification"
 
         result = self._dfu_parse_notify(notify)
@@ -330,6 +333,7 @@ class BleSecureDfuController(object):
                 Results.to_string(result[1])))
 
         return result
+            
 
     # --------------------------------------------------------------------------
     #  Send a procedure + any parameters required
@@ -481,7 +485,11 @@ class BleSecureDfuController(object):
                 #     offset, i, segment_end, num_bytes, self.image_size, segment_count, segment_total)
 
                 if (segment_count % self.pkt_receipt_interval) == 0:
-                    (proc, res, offset, crc32) = self._wait_and_parse_notify()
+                    try:
+                        (proc, res, offset, crc32) = self._wait_and_parse_notify()
+                    except e:
+                        # Likely no notification received, need to re-transmit object
+                        return 0
                     
                     if res != Results.SUCCESS:
                         raise Exception("bad notification status: {}".format(Results.to_string(res)))
