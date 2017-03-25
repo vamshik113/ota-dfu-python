@@ -127,11 +127,11 @@ class BleDfuControllerLegacy(NrfBleDfuController):
         # Each segment is pkt_payload_size bytes long.
         # For every pkt_receipt_interval sends, wait for notification.
         segment_count = 0
-        segment_total = int(math.ceil(self.hex_size/float(self.pkt_payload_size)))
+        segment_total = int(math.ceil(self.image_size/float(self.pkt_payload_size)))
         time_start = time.time()
         last_send_time = time.time()
         print "Begin DFU"
-        for i in range(0, self.hex_size, self.pkt_payload_size):
+        for i in range(0, self.image_size, self.pkt_payload_size):
             segment = self.bin_array[i:i + self.pkt_payload_size]
             self._dfu_send_data(segment)
             segment_count += 1
@@ -140,7 +140,7 @@ class BleDfuControllerLegacy(NrfBleDfuController):
             # last_send_time = time.time()
 
             if (segment_count == segment_total):
-                printProgress(self.hex_size, self.hex_size, prefix = 'Progress:', suffix = 'Complete', barLength = 50)
+                printProgress(self.image_size, self.image_size, prefix = 'Progress:', suffix = 'Complete', barLength = 50)
 
                 duration = time.time() - time_start
                 print "\nUpload complete in {} minutes and {} seconds".format(int(duration / 60), int(duration % 60))
