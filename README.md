@@ -1,37 +1,40 @@
-Python nRF51 DFU Server
-============================
+# Python nRF5 OTA DFU Controller
 
-This is my fork of astronomer80's fork of foldedtoad's Python OTA DFU utility. I've modified it to fit my application
+This is my fork of astronomer80's fork of foldedtoad's Python OTA DFU utility. 
+I've made some substantial changes to the code from the original repo, mainly:
 
-============================
+* Improved code structure and readability
+* Add support for the new secure bootloader from NRF SDK 12
 
-A python script for bluez gatttool using pexpect to achive Device Firmware Updates (DFU) to the nRF51.  
-The host system is assumed to be some flavor of Linux.
+## What does it do?
+This is a Python program that uses gatttool (provided with the Linux BlueZ driver) to achieve Device Firmware Updates (DFU) to a Nordic Semiconductor nRF51/52 device via Bluetooth Low Energy (BLE).
 
-**NOTE:**   
-This is probably not a beginner's project.  
-Peripheral firmware updating is a complex process, requiring several critical development support steps, not covered here, before the *dfu.py* utility can be used.
+### Main features:
 
-It is assumed that your peripheral firmware has been build to Nordic's SDK11 + SoftDevice 2.0.1  
-The target peripheral firmware should also include some variation of Nordic's DFU support.
+* Perform OTA DFU to an nRF5 peripheral without an external USB BLE dongle.
+* Ability to detect if the peripheral is running in application mode or bootloader, and automatically switch if needed (buttonless).
+* Support for both Legacy (SDK <= 11) and Secure (SDK >= 12) bootloader.
 
-The application is able to detect if the device is running in DFU mode already, and it also has the capability to switch the target to DFU mode, if it supports it. For more information on DFU please see the links at the end of this readme.
+Before using this utility the nRF peripheral device needs to be programmed with a DFU bootloader (see Nordic Semiconductor documentation/examples for instructions on that).
 
-This project assumes you are developing on a Linux/Unix or OSX system and deploying to a Linux system. 
+This project assumes you are developing and deploying to Linux system. Astronomer80 has repos for similar applications for [Windows](https://github.com/astronomer80/nrf52_bledfu_win) and [Mac OS X](https://github.com/astronomer80/nrf52_bledfu_mac).
 
-Prerequisite
-------------
+## Prerequisites
 
-    sudo pip install pexpect
-    sudo pip install intelhex
+* BlueZ 5.4 or above
+* Python 2.7
+* Python `pexpect` module (available via pip)
+* Python `intelhex` module (available via pip)
 
-Firmware Build Requirement
---------------------------
-* Your nRF51 firmware build method will produce either a firmware hex or bin file named *application.hex* or *application.bin*.  This naming convention is per Nordics DFU specification, which is use by this DFU server as well as the Android Master Control Panel DFU, and iOS DFU app.  
-* Your nRF51 firmware build method will produce an Init file (aka *application.dat*).  Again, this is per Nordic's naming conventions. 
+## Firmware Build Requirement
+* Your nRF5 peripheral firmware build method will produce  a firmware file ending with either `*.hex` or `*.bin`.  
+* Your nRF5 firmware build method will produce an Init file ending with `.dat`.
+* The Nordic naming convention is `application.bin` and `application.dat`, but this utility will accept any names.
 
-Generating `.dat` (init) files
----------------------
+## Generating init files
+
+### Legacy bootloader
+
 Use the `gen_dat` application (you need to compile it with `gcc gen_dat.c -o gen_dat` on first run) to generate a `.dat` file from your `.bin` file. Example:
 
     ./gen_dat application.bin application.dat
@@ -40,22 +43,24 @@ Note: The `gen_dat` utility expects a `.bin` file input, so you'll get CRC error
 
 An alternative is to use `nrfutil` from Nordic Semi, but I've found this method to be easier. You may need to edit the `gen_dat` source to fit your specific application.
 
-Usage
------
-There are two ways to speicify firmware files for this OTA-DFU server. Either by specifying both the <hex or bin> file with the dat file, or more easily by the zip file, which contains both the hex and dat files.  
-The new "zip file" form is encouraged by Nordic, but the older hex+dat file methods should still work.  
+### Secure bootloader
 
+You need to use `nrfutil` to generate firmware packages for the new secure bootloader (SDK > 12) as the package needs to be signed with a private/public key pair. Note that the bootloader will need to be programmed with the corresponding public key. See the [nrfutil repo](https://github.com/NordicSemiconductor/pc-nrfutil) for details.
 
-Usage Examples
---------------
+## Usage
 
-    > sudo ./dfu.py -f ~/application.hex -d ~/application.dat -a EF:FF:D2:92:9C:2A
+There are two ways to specify firmware files for this utility. Either by specifying both the `.hex` or `.bin` file with the `.dat` file, or more easily by the `.zip` file, which contains both the hex and dat files.  
+The new `.zip` file form is encouraged by Nordic, but the older hex/bin + dat file methods should still work.
+
+## Usage Examples
+
+    > sudo ./dfu.py -f ~/application.hex -d ~/application.dat -a CD:E3:4A:47:1C:E4
 
 or
 
-    > sudo ./dfu.py -z ~/application.zip -a EF:FF:D2:92:9C:2A  
+    > sudo ./dfu.py -z ~/application.zip -a CD:E3:4A:47:1C:E4  
 
-To figure out the address of DfuTarg do a 'hcitool lescan' - 
+To figure out the address of DfuTarg do a `hcitool lescan` - 
 
     $ sudo hcitool -i hci0 lescan  
     LE Scan ...   
@@ -63,7 +68,7 @@ To figure out the address of DfuTarg do a 'hcitool lescan' -
     CD:E3:4A:47:1C:E4 (unknown) 
 
 
-Example of *dfu.py* Output
+Example Output
 ------------------------                                                                                            
      
         ================================
@@ -72,7 +77,7 @@ Example of *dfu.py* Output
         ==                            ==
         ================================ 
         
-    Sending file application.bin to D3:14:97:B5:C8:FE
+    Sending file application.bin to CD:E3:4A:47:1C:E4
     bin array size:  60788
     Checking DFU State...
     Board needs to switch in DFU mode
@@ -91,6 +96,18 @@ Example of *dfu.py* Output
     Activate and reset
     DFU Server done
     
+## TODO:
 
-**LINKS**  
-https://infocenter.nordicsemi.com/index.jsp?topic=%2Fcom.nordic.infocenter.sdk5.v11.0.0%2Fexamples_ble_dfu.html&cp=4_0_1_4_2_3
+* Add `--secure` and `--legacy` flags to specify which method to use.
+* Verify Legacy DFU procedure still works.
+* Implement link-loss procedure for Legacy Controller.
+* Update example output in readme.
+* Add makefile examples.
+* More code cleanup.
+
+## Info & References
+
+* [Nordic Legacy DFU Service](http://infocenter.nordicsemi.com/topic/com.nordic.infocenter.sdk5.v11.0.0/bledfu_transport_bleservice.html?cp=4_0_3_4_3_1_4_1)
+* [Nordic Legacy DFU sequence diagrams](http://infocenter.nordicsemi.com/topic/com.nordic.infocenter.sdk5.v11.0.0/bledfu_transport_bleprofile.html?cp=4_0_3_4_3_1_4_0_1_6#ota_profile_pkt_rcpt_notif)
+* [Nordic Secure DFU bootloader](http://infocenter.nordicsemi.com/topic/com.nordic.infocenter.sdk5.v12.2.0/lib_dfu_transport_ble.html?cp=4_0_1_3_5_2_2)
+* [nrfutil](https://github.com/NordicSemiconductor/pc-nrfutil)
