@@ -17,10 +17,11 @@ This is a Python program that uses gatttool (provided with the Linux BlueZ drive
 
 Before using this utility the nRF peripheral device needs to be programmed with a DFU bootloader (see Nordic Semiconductor documentation/examples for instructions on that).
 
-This project assumes you are developing on a Linux/Unix or OSX system and deploying to a Linux system. 
+This project assumes you are developing and deploying to Linux system. Astronomer80 has repos for similar applications for [Windows](https://github.com/astronomer80/nrf52_bledfu_win) and [Mac OS X](https://github.com/astronomer80/nrf52_bledfu_mac).
 
 ## Prerequisites
 
+* BlueZ 5.4 or above
 * Python 2.7
 * Python `pexpect` module (available via pip)
 * Python `intelhex` module (available via pip)
