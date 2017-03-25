@@ -7,16 +7,15 @@
 """
 import os, re
 import sys
-import pexpect
 import optparse
 import time
 import math
 import traceback
 
-from intelhex import IntelHex
 from unpacker import Unpacker
 
-from ble_secure_dfu_controller import BleSecureDfuController
+from ble_secure_dfu_controller import BleDfuControllerSecure
+from ble_legacy_dfu_controller import BleDfuControllerLegacy
         
 def main():
 
@@ -120,7 +119,7 @@ def main():
 
         ''' Start of Device Firmware Update processing '''
 
-        ble_dfu = BleSecureDfuController(options.address.upper(), hexfile, datfile)
+        ble_dfu = BleDfuControllerLegacy(options.address.upper(), hexfile, datfile)
 
         # Initialize inputs
         ble_dfu.input_setup()
@@ -155,8 +154,8 @@ def main():
         pass
 
     # If Unpacker for zipfile used then delete Unpacker
-    #if unpacker != None:
-    #    unpacker.delete()
+    if unpacker != None:
+       unpacker.delete()
 
     print "DFU Server done"
 
