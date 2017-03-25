@@ -119,7 +119,7 @@ def main():
 
         ''' Start of Device Firmware Update processing '''
 
-        ble_dfu = BleDfuControllerLegacy(options.address.upper(), hexfile, datfile)
+        ble_dfu = BleDfuControllerSecure(options.address.upper(), hexfile, datfile)
 
         # Initialize inputs
         ble_dfu.input_setup()
