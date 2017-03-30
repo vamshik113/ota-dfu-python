@@ -15,6 +15,10 @@ def uint16_to_bytes_le(value):
     return [(value >> 0 & 0xFF),
             (value >> 8 & 0xFF)]
 
+def zero_pad_array_le(data, padsize):
+    for i in range(0, padsize):
+        data.insert(0, 0)
+
 def array_to_hex_string(arr):
     hex_str = ""
     for val in arr:

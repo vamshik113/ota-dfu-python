@@ -99,7 +99,6 @@ Example Output
 ## TODO:
 
 * Add `--secure` and `--legacy` flags to specify which method to use.
-* Verify Legacy DFU procedure still works.
 * Implement link-loss procedure for Legacy Controller.
 * Update example output in readme.
 * Add makefile examples.

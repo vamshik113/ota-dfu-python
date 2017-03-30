@@ -243,7 +243,7 @@ class NrfBleDfuController(object):
         cmd += ' '
         cmd += array_to_hex_string(data)
 
-        # if verbose: print cmd
+        if verbose: print cmd
 
         self.ble_conn.sendline(cmd)
 
