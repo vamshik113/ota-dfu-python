@@ -66,6 +66,19 @@ def main():
                   help='zip file to be used.'
                   )
 
+        parser.add_option('--secure',
+                  action='store_true',
+                  dest='secure_dfu',
+                  default=True,
+                  help='Use secure bootloader (Nordic SDK > 12)'
+                  )
+
+        parser.add_option('--legacy',
+                  action='store_false',
+                  dest='secure_dfu',
+                  help='Use secure bootloader (Nordic SDK < 12)'
+                  )
+
         options, args = parser.parse_args()
 
     except Exception, e:
@@ -119,8 +132,10 @@ def main():
 
         ''' Start of Device Firmware Update processing '''
 
-        ble_dfu = BleDfuControllerSecure(options.address.upper(), hexfile, datfile)
-        # ble_dfu = BleDfuControllerLegacy(options.address.upper(), hexfile, datfile)
+        if options.secure_dfu:
+            ble_dfu = BleDfuControllerSecure(options.address.upper(), hexfile, datfile)
+        else:
+            ble_dfu = BleDfuControllerLegacy(options.address.upper(), hexfile, datfile)
 
         # Initialize inputs
         ble_dfu.input_setup()
