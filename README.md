@@ -47,6 +47,8 @@ An alternative is to use `nrfutil` from Nordic Semi, but I've found this method 
 
 You need to use `nrfutil` to generate firmware packages for the new secure bootloader (SDK > 12) as the package needs to be signed with a private/public key pair. Note that the bootloader will need to be programmed with the corresponding public key. See the [nrfutil repo](https://github.com/NordicSemiconductor/pc-nrfutil) for details.
 
+Note: I've had problems with the pip version of `nrfutil`. I recommend [installing from source](https://github.com/NordicSemiconductor/pc-nrfutil#running-and-installing-from-source) instead.
+
 ## Usage
 
 There are two ways to specify firmware files for this utility. Either by specifying both the `.hex` or `.bin` file with the `.dat` file, or more easily by the `.zip` file, which contains both the hex and dat files.  
