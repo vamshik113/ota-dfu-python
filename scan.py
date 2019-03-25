@@ -107,7 +107,7 @@ if __name__ == '__main__':
 
     #scanner = Scan("DfuTarg")  # specific advertisement name
     scanner = Scan(None)      # any advertising name
-    
+
     scanner.scan()
 
     print "scan complete"

@@ -27,7 +27,7 @@ static dfu_init_t dfu_init = {
     .device_type    = 0xffff,
     .device_rev     = 0xffff,
     .app_version    = 0xffffffff,
-    .softdevice_1   = 0x0001,  
+    .softdevice_1   = 0x0001,
     .softdevice_2   = 0xfffe,  // Any softdevice
     .crc            = 0x0000,
 };
@@ -119,7 +119,7 @@ int main(int argc, char* argv[])
     /* Compute CRC-16. */
     dfu_init.crc = crc16_compute(bindata, binsize, 0);
 
-    /* 
+    /*
      *  Write INIT file
      */
      printf("Writing .dat file, size: %d\n", sizeof(dfu_init_t));

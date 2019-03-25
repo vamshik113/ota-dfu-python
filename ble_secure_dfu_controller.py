@@ -98,7 +98,7 @@ class BleDfuControllerSecure(NrfBleDfuController):
         self._dfu_send_init()
 
         self._dfu_send_image()
- 
+
     # --------------------------------------------------------------------------
     #  Check if the peripheral is running in bootloader (DFU) or application mode
     #  Returns True if the peripheral is in DFU mode
@@ -162,7 +162,7 @@ class BleDfuControllerSecure(NrfBleDfuController):
                 crc32 = bytes_to_uint32_le(notify[7:11])
 
                 return (dfu_procedure, dfu_result, offset, crc32)
-            
+
             elif(dfu_procedure == Procedures.SELECT and dfu_result == Results.SUCCESS):
                 max_size = bytes_to_uint32_le(notify[3:7])
                 offset = bytes_to_uint32_le(notify[7:11])
@@ -207,7 +207,7 @@ class BleDfuControllerSecure(NrfBleDfuController):
         # Select command
         self._dfu_send_command(Procedures.SELECT, [Procedures.PARAM_COMMAND]);
         (proc, res, max_size, offset, crc32) = self._wait_and_parse_notify()
-        
+
         if offset != init_size or crc32 != init_crc:
             if offset == 0 or offset > init_size:
                 # Create command
@@ -224,7 +224,7 @@ class BleDfuControllerSecure(NrfBleDfuController):
 
                 if (segment_count % self.pkt_receipt_interval) == 0:
                     (proc, res, offset, crc32) = self._wait_and_parse_notify()
-                    
+
                     if res != Results.SUCCESS:
                         raise Exception("bad notification status: {}".format(Results.to_string(res)))
 
@@ -298,13 +298,13 @@ class BleDfuControllerSecure(NrfBleDfuController):
                     except e:
                         # Likely no notification received, need to re-transmit object
                         return 0
-                    
+
                     if res != Results.SUCCESS:
                         raise Exception("bad notification status: {}".format(Results.to_string(res)))
 
                     if crc32 != crc32_unsigned(self.bin_array[0:offset]):
                         # Something went wrong, need to re-transmit this object
-                        return 0 
+                        return 0
 
                     print_progress(offset, self.image_size, prefix = 'Progress:', suffix = 'Complete', barLength = 50)
 

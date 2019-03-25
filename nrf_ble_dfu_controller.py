@@ -57,7 +57,7 @@ class NrfBleDfuController(object):
 
     def __init__(self, target_mac, firmware_path, datfile_path):
         self.target_mac = target_mac
-        
+
         self.firmware_path = firmware_path
         self.datfile_path = datfile_path
 
