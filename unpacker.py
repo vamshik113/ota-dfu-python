@@ -43,7 +43,7 @@ class Unpacker(object):
 
         # print "DAT file: " + datfile
         # print "BIN file: " + binfile
-        
+
         return binfile, datfile
 
    #--------------------------------------------------------------------------
@@ -52,5 +52,3 @@ class Unpacker(object):
    def delete(self):
        # delete self.unzip_dir and its contents
        shutil.rmtree(self.unzip_dir)
-
-

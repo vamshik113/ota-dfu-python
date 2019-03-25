@@ -128,7 +128,7 @@ class BleDfuControllerLegacy(NrfBleDfuController):
 
         # Send 'RECEIVE FIRMWARE IMAGE' command to set DFU in firmware receive state. 
         self._dfu_send_command(Procedures.RECEIVE_FIRMWARE_IMAGE)
-        
+
         # Send bin_array contents as as series of packets (burst mode).
         # Each segment is pkt_payload_size bytes long.
         # For every pkt_receipt_interval sends, wait for notification.
@@ -151,7 +151,7 @@ class BleDfuControllerLegacy(NrfBleDfuController):
                 duration = time.time() - time_start
                 print "\nUpload complete in {} minutes and {} seconds".format(int(duration / 60), int(duration % 60))
                 if verbose: print "segments sent: {}".format(segment_count)
-                
+
                 print "Waiting for DFU complete notification"
                 # Wait for DFU complete notification
                 self._wait_and_parse_notify()
@@ -193,26 +193,26 @@ class BleDfuControllerLegacy(NrfBleDfuController):
 
         self.ble_conn.sendline(cmd)
 
-        # Skip two rows     
+        # Skip two rows
         try:
             res = self.ble_conn.expect('handle:.*', timeout=10)
-            # res = self.ble_conn.expect('handle:', timeout=10) 
+            # res = self.ble_conn.expect('handle:', timeout=10)
         except pexpect.TIMEOUT, e:
             print "State timeout"
         except:
             pass
 
         return self.ble_conn.after.find("value: 08 00")!=-1
-        
+
     def switch_to_dfu_mode(self):
         (_, bl_value_handle, bl_cccd_handle) = self._get_handles(self.UUID_CONTROL_POINT)
 
-        #Enable notifications 
+        # Enable notifications
         cmd = 'char-write-req 0x%02x %02x' % (bl_cccd_handle, 1)
         if verbose: print cmd
         self.ble_conn.sendline(cmd)
 
-        #Reset the board in DFU mode. After reset the board will be disconnected
+        # Reset the board in DFU mode. After reset the board will be disconnected
         cmd = 'char-write-req 0x%02x 0104' % (bl_value_handle)
         if verbose: print cmd
         self.ble_conn.sendline(cmd)
@@ -222,7 +222,7 @@ class BleDfuControllerLegacy(NrfBleDfuController):
         #print  "Send 'START DFU' + Application Command"
         #self._dfu_state_set(0x0104)
 
-        #Reconnect the board.
+        # Reconnect the board.
         ret = self.scan_and_connect()
         if verbose: print "Connected " + str(ret)
 

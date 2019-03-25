@@ -16,16 +16,16 @@ from unpacker import Unpacker
 
 from ble_secure_dfu_controller import BleDfuControllerSecure
 from ble_legacy_dfu_controller import BleDfuControllerLegacy
-        
+
 def main():
 
-    init_msg =  """ 
+    init_msg =  """
     ================================
     ==                            ==
     ==         DFU Server         ==
     ==                            ==
-    ================================ 
-    		"""
+    ================================
+    """
 
     # print "DFU Server start"
     print init_msg
@@ -107,8 +107,8 @@ def main():
             unpacker = Unpacker()
             #print options.zipfile
             try:
-            	hexfile, datfile = unpacker.unpack_zipfile(options.zipfile)	
-            except Exception, e:        
+                hexfile, datfile = unpacker.unpack_zipfile(options.zipfile)	
+            except Exception, e:
                 print "ERR"
                 print e
                 pass
@@ -158,7 +158,7 @@ def main():
 
         ble_dfu.start()
 
-        # Disconnect from peer device if not done already and clean up. 
+        # Disconnect from peer device if not done already and clean up.
         ble_dfu.disconnect()
 
     except Exception, e:
@@ -186,4 +186,3 @@ if __name__ == '__main__':
     sys.dont_write_bytecode = True
 
     main()
-
