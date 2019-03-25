@@ -7,7 +7,8 @@ I've made some substantial changes to the code from the original repo, mainly:
 * Add support for the new secure bootloader from NRF SDK 12
 
 ## What does it do?
-This is a Python program that uses gatttool (provided with the Linux BlueZ driver) to achieve Device Firmware Updates (DFU) to a Nordic Semiconductor nRF51/52 device via Bluetooth Low Energy (BLE).
+
+This is a Python program that uses `gatttool` (provided with the Linux BlueZ driver) to achieve Over The Air (OTA) Device Firmware Updates (DFU) to a Nordic Semiconductor nRF5 (either nRF51 or nRF52) device via Bluetooth Low Energy (BLE).
 
 ### Main features:
 
@@ -15,9 +16,9 @@ This is a Python program that uses gatttool (provided with the Linux BlueZ drive
 * Ability to detect if the peripheral is running in application mode or bootloader, and automatically switch if needed (buttonless).
 * Support for both Legacy (SDK <= 11) and Secure (SDK >= 12) bootloader.
 
-Before using this utility the nRF peripheral device needs to be programmed with a DFU bootloader (see Nordic Semiconductor documentation/examples for instructions on that).
+Before using this utility the nRF5 peripheral device needs to be programmed with a DFU bootloader (see Nordic Semiconductor documentation/examples for instructions on that).
 
-This project assumes you are developing and deploying to Linux system. Astronomer80 has repos for similar applications for [Windows](https://github.com/astronomer80/nrf52_bledfu_win) and [Mac OS X](https://github.com/astronomer80/nrf52_bledfu_mac).
+This project assumes you are developing on and deploying to a Linux system. Astronomer80 has repos for similar applications for [Windows](https://github.com/astronomer80/nrf52_bledfu_win) and [Mac OS X](https://github.com/astronomer80/nrf52_bledfu_mac).
 
 ## Prerequisites
 
@@ -27,9 +28,10 @@ This project assumes you are developing and deploying to Linux system. Astronome
 * Python `intelhex` module (available via pip)
 
 ## Firmware Build Requirement
-* Your nRF5 peripheral firmware build method will produce  a firmware file ending with either `*.hex` or `*.bin`.  
+
+* Your nRF5 peripheral firmware build method will produce  a firmware file ending with either `*.hex` or `*.bin`.
 * Your nRF5 firmware build method will produce an Init file ending with `.dat`.
-* The Nordic naming convention is `application.bin` and `application.dat`, but this utility will accept any names.
+* The typical naming convention is `application.bin` and `application.dat`, but this utility will accept other names.
 
 ## Generating init files
 
@@ -38,10 +40,10 @@ This project assumes you are developing and deploying to Linux system. Astronome
 Use the `gen_dat` application (you need to compile it with `gcc gen_dat.c -o gen_dat` on first run) to generate a `.dat` file from your `.bin` file. Example:
 
     ./gen_dat application.bin application.dat
-    
-Note: The `gen_dat` utility expects a `.bin` file input, so you'll get CRC errors during DFU using a `.dat` file generated from a `.hex` file.
 
-An alternative is to use `nrfutil` from Nordic Semi, but I've found this method to be easier. You may need to edit the `gen_dat` source to fit your specific application.
+Note: The `gen_dat` utility expects a `.bin` file input, so you'll get Cyclic Redundancy Check (CRC) errors during DFU using a `.dat` file generated from a `.hex` file.
+
+An alternative is to use `nrfutil` from Nordic Semiconductor, but I've found this method to be easier. You may need to edit the `gen_dat` source to fit your specific application.
 
 ### Secure bootloader
 
@@ -51,34 +53,34 @@ Note: I've had problems with the pip version of `nrfutil`. I recommend [installi
 
 ## Usage
 
-There are two ways to specify firmware files for this utility. Either by specifying both the `.hex` or `.bin` file with the `.dat` file, or more easily by the `.zip` file, which contains both the hex and dat files.  
+There are two ways to specify firmware files for this utility. Either by specifying both the `.hex` or `.bin` file with the `.dat` file, or more easily by the `.zip` file, which contains both the hex and dat files.
+
 The new `.zip` file form is encouraged by Nordic, but the older hex/bin + dat file methods should still work.
 
 ## Usage Examples
 
     > sudo ./dfu.py -f ~/application.hex -d ~/application.dat -a CD:E3:4A:47:1C:E4
 
-or
+or:
 
-    > sudo ./dfu.py -z ~/application.zip -a CD:E3:4A:47:1C:E4  
+    > sudo ./dfu.py -z ~/application.zip -a CD:E3:4A:47:1C:E4
 
-To figure out the address of DfuTarg do a `hcitool lescan` - 
+You can use the `hcitool lescan` to figure out the address of a DFU target, for example:
 
-    $ sudo hcitool -i hci0 lescan  
-    LE Scan ...   
-    CD:E3:4A:47:1C:E4 <TARGET_NAME>  
-    CD:E3:4A:47:1C:E4 (unknown) 
+    $ sudo hcitool -i hci0 lescan
+    LE Scan ...
+    CD:E3:4A:47:1C:E4 <TARGET_NAME>
+    CD:E3:4A:47:1C:E4 (unknown)
 
 
-Example Output
-------------------------                                                                                            
-     
+## Example Output
+
         ================================
         ==                            ==
         ==         DFU Server         ==
         ==                            ==
         ================================ 
-        
+
     Sending file application.bin to CD:E3:4A:47:1C:E4
     bin array size:  60788
     Checking DFU State...
@@ -90,14 +92,14 @@ Example Output
     Waiting for INIT DFU notification
     Begin DFU
     Progress: |xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx| 100.0% Complete (60788 of 60788 bytes)
-    
+
     Upload complete in 0 minutes and 14 seconds
     segments sent: 3040
     Waiting for DFU complete notification
     Waiting for Firmware Validation notification
     Activate and reset
     DFU Server done
-    
+
 ## TODO:
 
 * Implement link-loss procedure for Legacy Controller.
