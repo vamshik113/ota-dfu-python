@@ -184,7 +184,7 @@ class BleDfuControllerLegacy(NrfBleDfuController):
     #  Check if the peripheral is running in bootloader (DFU) or application mode
     #  Returns True if the peripheral is in DFU mode
     # --------------------------------------------------------------------------
-    def check_DFU_mode(self):
+    def check_dfu_mode(self):
         if verbose: print "Checking DFU State..."
 
         cmd = 'char-read-uuid %s' % self.UUID_VERSION

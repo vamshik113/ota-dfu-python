@@ -142,7 +142,7 @@ def main():
 
         # Connect to peer device. Assume application mode.
         if ble_dfu.scan_and_connect():
-            if not ble_dfu.check_DFU_mode():
+            if not ble_dfu.check_dfu_mode():
                 print "Need to switch to DFU mode"
                 success = ble_dfu.switch_to_dfu_mode()
                 if not success:

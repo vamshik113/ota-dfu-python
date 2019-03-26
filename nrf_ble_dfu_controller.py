@@ -31,7 +31,7 @@ class NrfBleDfuController(object):
     #  Returns True if the peripheral is in DFU mode
     # --------------------------------------------------------------------------
     @abstractmethod
-    def check_DFU_mode(self):
+    def check_dfu_mode(self):
         pass
 
     @abstractmethod
