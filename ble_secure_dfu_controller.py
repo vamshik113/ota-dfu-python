@@ -85,8 +85,8 @@ class BleDfuControllerSecure(NrfBleDfuController):
         (_, self.data_handle, _) = self._get_handles(self.UUID_PACKET)
 
         if verbose:
-            print 'Control Point Handle: 0x%04x, CCCD: 0x%04x' % (self.ctrlpt_handle, self.ctrlpt_cccd_handle)
-            print 'Packet handle: 0x%04x' % (self.data_handle)
+            print('Control Point Handle: 0x%04x, CCCD: 0x%04x' % (self.ctrlpt_handle, self.ctrlpt_cccd_handle))
+            print('Packet handle: 0x%04x' % (self.data_handle))
 
         # Subscribe to notifications from Control Point characteristic
         self._enable_notifications(self.ctrlpt_cccd_handle)
@@ -104,7 +104,7 @@ class BleDfuControllerSecure(NrfBleDfuController):
     #  Returns True if the peripheral is in DFU mode
     # --------------------------------------------------------------------------
     def check_DFU_mode(self):
-        print "Checking DFU State..."
+        print("Checking DFU State...")
 
         self.ble_conn.sendline('characteristics')
 
@@ -112,7 +112,7 @@ class BleDfuControllerSecure(NrfBleDfuController):
 
         try:
             self.ble_conn.expect([self.UUID_BUTTONLESS], timeout=2)
-        except pexpect.TIMEOUT, e:
+        except (pexpect.TIMEOUT , e):
             dfu_mode = True
 
         return dfu_mode
@@ -138,10 +138,10 @@ class BleDfuControllerSecure(NrfBleDfuController):
     # --------------------------------------------------------------------------
     def _dfu_parse_notify(self, notify):
         if len(notify) < 3:
-            print "notify data length error"
+            print("notify data length error")
             return None
 
-        if verbose: print notify
+        if verbose: print(notify)
 
         dfu_notify_opcode = Procedures.from_string(notify[0])
         if dfu_notify_opcode == Procedures.RESPONSE:
@@ -152,8 +152,8 @@ class BleDfuControllerSecure(NrfBleDfuController):
             procedure_str = Procedures.to_string(dfu_procedure)
             result_str  = Results.to_string(dfu_result)
 
-            # if verbose: print "opcode: {0}, proc: {1}, res: {2}".format(dfu_notify_opcode, procedure_str, result_str)
-            if verbose: print "opcode: 0x%02x, proc: %s, res: %s" % (dfu_notify_opcode, procedure_str, result_str)
+            # if verbose: print("opcode: {0}, proc: {1}, res: {2}".format(dfu_notify_opcode, procedure_str, result_str))
+            if verbose: print("opcode: 0x%02x, proc: %s, res: %s" % (dfu_notify_opcode, procedure_str, result_str))
 
             # Packet Receipt notifications are sent in the exact same format
             # as responses to the CALC_CHECKSUM procedure.
@@ -177,13 +177,13 @@ class BleDfuControllerSecure(NrfBleDfuController):
     #  Wait for a notification and parse the response
     # --------------------------------------------------------------------------
     def _wait_and_parse_notify(self):
-        if verbose: print "Waiting for notification"
+        if verbose: print("Waiting for notification")
         notify = self._dfu_wait_for_notify()
 
         if notify is None:
             raise Exception("No notification received")
 
-        if verbose: print "Parsing notification"
+        if verbose: print("Parsing notification")
 
         result = self._dfu_parse_notify(notify)
         if result[1] != Results.SUCCESS:
@@ -197,7 +197,7 @@ class BleDfuControllerSecure(NrfBleDfuController):
     #  Send the Init info (*.dat file contents) to peripheral device.
     # --------------------------------------------------------------------------
     def _dfu_send_init(self):
-        if verbose: print "dfu_send_init"
+        if verbose: print("dfu_send_init")
 
         # Open the DAT file and create array of its contents
         init_bin_array = array('B', open(self.datfile_path, 'rb').read())
@@ -236,13 +236,13 @@ class BleDfuControllerSecure(NrfBleDfuController):
         self._dfu_send_command(Procedures.EXECUTE)
         self._wait_and_parse_notify()
 
-        print "Init packet successfully transfered"
+        print("Init packet successfully transfered")
 
     # --------------------------------------------------------------------------
     #  Send the Firmware image to peripheral device.
     # --------------------------------------------------------------------------
     def _dfu_send_image(self):
-        if verbose: print "dfu_send_image"
+        if verbose: print("dfu_send_image")
 
         # Select Data Object
         self._dfu_send_command(Procedures.SELECT, [Procedures.PARAM_DATA])
@@ -250,21 +250,21 @@ class BleDfuControllerSecure(NrfBleDfuController):
 
         # Split the firmware into multiple objects
         num_objects = int(math.ceil(self.image_size / float(max_size)))
-        print "Max object size: %d, num objects: %d, offset: %d, total size: %d" % (max_size, num_objects, offset, self.image_size)
+        print("Max object size: %d, num objects: %d, offset: %d, total size: %d" % (max_size, num_objects, offset, self.image_size))
 
         time_start = time.time()
         last_send_time = time.time()
 
         obj_offset = (offset/max_size)*max_size
         while(obj_offset < self.image_size):
-            # print "\nSending object {} of {}".format(obj_offset/max_size+1, num_objects)
+            # print("\nSending object {} of {}".format(obj_offset/max_size+1, num_objects))
             obj_offset += self._dfu_send_object(obj_offset, max_size)
 
         # Image uploaded successfully, update the progress bar
         print_progress(self.image_size, self.image_size, prefix = 'Progress:', suffix = 'Complete', barLength = 50)
 
         duration = time.time() - time_start
-        print "\nUpload complete in {} minutes and {} seconds".format(int(duration / 60), int(duration % 60))
+        print("\nUpload complete in {} minutes and {} seconds".format(int(duration / 60), int(duration % 60)))
 
     # --------------------------------------------------------------------------
     #  Send a single data object of given size and offset.
@@ -289,8 +289,8 @@ class BleDfuControllerSecure(NrfBleDfuController):
                 self._dfu_send_data(segment)
                 segment_count += 1
 
-                # print "j: {} i: {}, end: {}, bytes: {}, size: {} segment #{} of {}".format(
-                #     offset, i, segment_end, num_bytes, self.image_size, segment_count, segment_total)
+                # print("j: {} i: {}, end: {}, bytes: {}, size: {} segment #{} of {}".format(
+                #     offset, i, segment_end, num_bytes, self.image_size, segment_count, segment_total))
 
                 if (segment_count % self.pkt_receipt_interval) == 0:
                     try:
