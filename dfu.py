@@ -27,8 +27,8 @@ def main():
     ================================
     """
 
-    # print "DFU Server start"
-    print init_msg
+    # print("DFU Server start")
+    print(init_msg)
 
     try:
         parser = optparse.OptionParser(usage='%prog -f <hex_file> -a <dfu_target_address>\n\nExample:\n\tdfu.py -f application.hex -d application.dat -a cd:e3:4a:47:1c:e4',
@@ -82,8 +82,8 @@ def main():
         options, args = parser.parse_args()
 
     except Exception, e:
-        print e
-        print "For help use --help"
+        print(e)
+        print("For help use --help")
         sys.exit(2)
 
     try:
@@ -101,16 +101,16 @@ def main():
         if options.zipfile != None:
 
             if (options.hexfile != None) or (options.datfile != None):
-                print "Conflicting input directives"
+                print("Conflicting input directives")
                 exit(2)
 
             unpacker = Unpacker()
-            #print options.zipfile
+            #print(options.zipfile)
             try:
                 hexfile, datfile = unpacker.unpack_zipfile(options.zipfile)	
             except Exception, e:
-                print "ERR"
-                print e
+                print("ERR")
+                print(e)
                 pass
 
         else:
@@ -119,11 +119,11 @@ def main():
                 exit(2)
 
             if not os.path.isfile(options.hexfile):
-                print "Error: Hex file doesn't exist"
+                print("Error: Hex file doesn't exist")
                 exit(2)
 
             if not os.path.isfile(options.datfile):
-                print "Error: DAT file doesn't exist"
+                print("Error: DAT file doesn't exist")
                 exit(2)
 
             hexfile = options.hexfile
@@ -143,16 +143,16 @@ def main():
         # Connect to peer device. Assume application mode.
         if ble_dfu.scan_and_connect():
             if not ble_dfu.check_DFU_mode():
-                print "Need to switch to DFU mode"
+                print("Need to switch to DFU mode")
                 success = ble_dfu.switch_to_dfu_mode()
                 if not success:
-                    print "Couldn't reconnect"
+                    print("Couldn't reconnect")
         else:
             # The device might already be in DFU mode (MAC + 1)
             ble_dfu.target_mac_increase(1)
 
             # Try connection with new address
-            print "Couldn't connect, will try DFU MAC"
+            print("Couldn't connect, will try DFU MAC")
             if not ble_dfu.scan_and_connect():
                 raise Exception("Can't connect to device")
 
@@ -162,8 +162,8 @@ def main():
         ble_dfu.disconnect()
 
     except Exception, e:
-        # print traceback.format_exc()
-        print "Exception at line {}: {}".format(sys.exc_info()[2].tb_lineno, e)
+        # print(traceback.format_exc())
+        print("Exception at line {}: {}".format(sys.exc_info()[2].tb_lineno, e))
         pass
 
     except:
@@ -173,7 +173,7 @@ def main():
     if unpacker != None:
        unpacker.delete()
 
-    print "DFU Server done"
+    print("DFU Server done")
 
 """
 ------------------------------------------------------------------------------

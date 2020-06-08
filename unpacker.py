@@ -41,8 +41,8 @@ class Unpacker(object):
         datfile = "{0}/{1}".format(self.unzip_dir, datfilename)
         binfile = "{0}/{1}".format(self.unzip_dir, binfilename)
 
-        # print "DAT file: " + datfile
-        # print "BIN file: " + binfile
+        # print("DAT file: " + datfile)
+        # print("BIN file: " + binfile)
 
         return binfile, datfile
 

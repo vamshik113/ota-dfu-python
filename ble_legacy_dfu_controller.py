@@ -86,15 +86,15 @@ class BleDfuControllerLegacy(NrfBleDfuController):
         self.pkt_receipt_interval = 5
 
         if verbose:
-            print 'Control Point Handle: 0x%04x, CCCD: 0x%04x' % (self.ctrlpt_handle, self.ctrlpt_cccd_handle)
-            print 'Packet handle: 0x%04x' % (self.data_handle)
+            print('Control Point Handle: 0x%04x, CCCD: 0x%04x' % (self.ctrlpt_handle, self.ctrlpt_cccd_handle))
+            print('Packet handle: 0x%04x' % (self.data_handle))
 
         # Subscribe to notifications from Control Point characteristic
-        if verbose: print "Enabling notifications"
+        if verbose: print("Enabling notifications")
         self._enable_notifications(self.ctrlpt_cccd_handle)
 
         # Send 'START DFU' + Application Command
-        if verbose: print "Sending START_DFU"
+        if verbose: print("Sending START_DFU")
         self._dfu_send_command(Procedures.START_DFU, [0x04])
 
         # Transmit binary image size
@@ -105,7 +105,7 @@ class BleDfuControllerLegacy(NrfBleDfuController):
         self._dfu_send_data(hex_size_array_lsb)
 
         # Wait for response to Image Size
-        print "Waiting for Image Size notification"
+        print("Waiting for Image Size notification")
         self._wait_and_parse_notify()
 
         # Send 'INIT DFU' + Init Packet Command
@@ -117,12 +117,12 @@ class BleDfuControllerLegacy(NrfBleDfuController):
         # Send 'INIT DFU' + Init Packet Complete Command
         self._dfu_send_command(Procedures.INITIALIZE_DFU, [0x01])
 
-        print "Waiting for INIT DFU notification"
+        print("Waiting for INIT DFU notification")
         # Wait for INIT DFU notification (indicates flash erase completed)
         self._wait_and_parse_notify()
 
         # Set the Packet Receipt Notification interval
-        if verbose: print "Setting pkt receipt notification interval"
+        if verbose: print("Setting pkt receipt notification interval")
         prn = uint16_to_bytes_le(self.pkt_receipt_interval)
         self._dfu_send_command(Procedures.PRN_REQUEST, prn)
 
@@ -136,23 +136,23 @@ class BleDfuControllerLegacy(NrfBleDfuController):
         segment_total = int(math.ceil(self.image_size/float(self.pkt_payload_size)))
         time_start = time.time()
         last_send_time = time.time()
-        print "Begin DFU"
+        print("Begin DFU")
         for i in range(0, self.image_size, self.pkt_payload_size):
             segment = self.bin_array[i:i + self.pkt_payload_size]
             self._dfu_send_data(segment)
             segment_count += 1
 
-            # print "segment #{} of {}, dt = {}".format(segment_count, segment_total, time.time() - last_send_time)
+            # print("segment #{} of {}, dt = {}".format(segment_count, segment_total, time.time() - last_send_time))
             # last_send_time = time.time()
 
             if (segment_count == segment_total):
                 print_progress(self.image_size, self.image_size, prefix = 'Progress:', suffix = 'Complete', barLength = 50)
 
                 duration = time.time() - time_start
-                print "\nUpload complete in {} minutes and {} seconds".format(int(duration / 60), int(duration % 60))
-                if verbose: print "segments sent: {}".format(segment_count)
+                print("\nUpload complete in {} minutes and {} seconds".format(int(duration / 60), int(duration % 60)))
+                if verbose: print("segments sent: {}".format(segment_count))
 
-                print "Waiting for DFU complete notification"
+                print("Waiting for DFU complete notification")
                 # Wait for DFU complete notification
                 self._wait_and_parse_notify()
 
@@ -169,7 +169,7 @@ class BleDfuControllerLegacy(NrfBleDfuController):
         # Send Validate Command
         self._dfu_send_command(Procedures.VALIDATE_FIRMWARE)
 
-        print "Waiting for Firmware Validation notification"
+        print("Waiting for Firmware Validation notification")
         # Wait for Firmware Validation notification
         self._wait_and_parse_notify()
 
@@ -177,7 +177,7 @@ class BleDfuControllerLegacy(NrfBleDfuController):
         time.sleep(1)
 
         # Send Activate and Reset Command
-        print "Activate and reset"
+        print("Activate and reset")
         self._dfu_send_command(Procedures.ACTIVATE_IMAGE_AND_RESET)
 
     # --------------------------------------------------------------------------
@@ -185,11 +185,11 @@ class BleDfuControllerLegacy(NrfBleDfuController):
     #  Returns True if the peripheral is in DFU mode
     # --------------------------------------------------------------------------
     def check_DFU_mode(self):
-        if verbose: print "Checking DFU State..."
+        if verbose: print("Checking DFU State...")
 
         cmd = 'char-read-uuid %s' % self.UUID_VERSION
 
-        if verbose: print cmd
+        if verbose: print(cmd)
 
         self.ble_conn.sendline(cmd)
 
@@ -198,7 +198,7 @@ class BleDfuControllerLegacy(NrfBleDfuController):
             res = self.ble_conn.expect('handle:.*', timeout=10)
             # res = self.ble_conn.expect('handle:', timeout=10)
         except pexpect.TIMEOUT, e:
-            print "State timeout"
+            print("State timeout")
         except:
             pass
 
@@ -209,22 +209,22 @@ class BleDfuControllerLegacy(NrfBleDfuController):
 
         # Enable notifications
         cmd = 'char-write-req 0x%02x %02x' % (bl_cccd_handle, 1)
-        if verbose: print cmd
+        if verbose: print(cmd)
         self.ble_conn.sendline(cmd)
 
         # Reset the board in DFU mode. After reset the board will be disconnected
         cmd = 'char-write-req 0x%02x 0104' % (bl_value_handle)
-        if verbose: print cmd
+        if verbose: print(cmd)
         self.ble_conn.sendline(cmd)
 
         time.sleep(0.5)
 
-        #print  "Send 'START DFU' + Application Command"
+        #print("Send 'START DFU' + Application Command")
         #self._dfu_state_set(0x0104)
 
         # Reconnect the board.
         ret = self.scan_and_connect()
-        if verbose: print "Connected " + str(ret)
+        if verbose: print("Connected " + str(ret))
 
         return ret
 
@@ -234,10 +234,10 @@ class BleDfuControllerLegacy(NrfBleDfuController):
     # --------------------------------------------------------------------------
     def _dfu_parse_notify(self, notify):
         if len(notify) < 3:
-            print "notify data length error"
+            print("notify data length error")
             return None
 
-        if verbose: print notify
+        if verbose: print(notify)
 
         dfu_notify_opcode = Procedures.from_string(notify[0])
 
@@ -249,7 +249,7 @@ class BleDfuControllerLegacy(NrfBleDfuController):
             procedure_str = Procedures.to_string(dfu_procedure)
             response_str  = Responses.to_string(dfu_response)
 
-            if verbose: print "opcode: 0x%02x, proc: %s, res: %s" % (dfu_notify_opcode, procedure_str, response_str)
+            if verbose: print("opcode: 0x%02x, proc: %s, res: %s" % (dfu_notify_opcode, procedure_str, response_str))
 
             return (dfu_procedure, dfu_response)
 
@@ -261,13 +261,13 @@ class BleDfuControllerLegacy(NrfBleDfuController):
     #  Wait for a notification and parse the response
     # --------------------------------------------------------------------------
     def _wait_and_parse_notify(self):
-        if verbose: print "Waiting for notification"
+        if verbose: print("Waiting for notification")
         notify = self._dfu_wait_for_notify()
 
         if notify is None:
             raise Exception("No notification received")
 
-        if verbose: print "Parsing notification"
+        if verbose: print("Parsing notification")
 
         result = self._dfu_parse_notify(notify)
         if result[1] != Responses.SUCCESS:
@@ -281,7 +281,7 @@ class BleDfuControllerLegacy(NrfBleDfuController):
     # Send the Init info (*.dat file contents) to peripheral device.
     #--------------------------------------------------------------------------
     def _dfu_send_init(self):
-        if verbose: print "dfu_send_init"
+        if verbose: print("dfu_send_init")
 
         # Open the DAT file and create array of its contents
         init_bin_array = array('B', open(self.datfile_path, 'rb').read())
