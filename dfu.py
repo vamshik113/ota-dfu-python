@@ -81,7 +81,7 @@ def main():
 
         options, args = parser.parse_args()
 
-    except Exception, e:
+    except (Exception , e):
         print(e)
         print("For help use --help")
         sys.exit(2)
@@ -108,7 +108,7 @@ def main():
             #print(options.zipfile)
             try:
                 hexfile, datfile = unpacker.unpack_zipfile(options.zipfile)	
-            except Exception, e:
+            except (Exception, e):
                 print("ERR")
                 print(e)
                 pass
@@ -161,7 +161,7 @@ def main():
         # Disconnect from peer device if not done already and clean up.
         ble_dfu.disconnect()
 
-    except Exception, e:
+    except (Exception, e):
         # print(traceback.format_exc())
         print("Exception at line {}: {}".format(sys.exc_info()[2].tb_lineno, e))
         pass

@@ -85,8 +85,8 @@ class BleDfuControllerSecure(NrfBleDfuController):
         (_, self.data_handle, _) = self._get_handles(self.UUID_PACKET)
 
         if verbose:
-            print('Control Point Handle: 0x%04x, CCCD: 0x%04x' % (self.ctrlpt_handle, self.ctrlpt_cccd_handle)))
-            print('Packet handle: 0x%04x' % (self.data_handle)
+            print('Control Point Handle: 0x%04x, CCCD: 0x%04x' % (self.ctrlpt_handle, self.ctrlpt_cccd_handle))
+            print('Packet handle: 0x%04x' % (self.data_handle))
 
         # Subscribe to notifications from Control Point characteristic
         self._enable_notifications(self.ctrlpt_cccd_handle)
@@ -112,7 +112,7 @@ class BleDfuControllerSecure(NrfBleDfuController):
 
         try:
             self.ble_conn.expect([self.UUID_BUTTONLESS], timeout=2)
-        except pexpect.TIMEOUT, e:
+        except (pexpect.TIMEOUT , e):
             dfu_mode = True
 
         return dfu_mode

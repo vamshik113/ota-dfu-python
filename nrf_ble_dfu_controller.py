@@ -129,14 +129,14 @@ class NrfBleDfuController(object):
 
         try:
             self.ble_conn.expect('\[LE\]>', timeout=timeout)
-        except pexpect.TIMEOUT, e:
+        except (pexpect.TIMEOUT, e):
             return False
 
         self.ble_conn.sendline('connect')
 
         try:
             res = self.ble_conn.expect('.*Connection successful.*', timeout=timeout)
-        except pexpect.TIMEOUT, e:
+        except (pexpect.TIMEOUT, e):
             return False
 
         return True
@@ -170,7 +170,7 @@ class NrfBleDfuController(object):
             self.ble_conn.expect([uuid], timeout=2)
             handles = re.findall('.*handle: (0x....),.*char value handle: (0x....)', self.ble_conn.before)
             (handle, value_handle) = handles[-1]
-        except pexpect.TIMEOUT, e:
+        except (pexpect.TIMEOUT, e):
             raise Exception("UUID not found: {}".format(uuid))
 
         return (int(handle, 16), int(value_handle, 16), int(value_handle, 16)+1)
@@ -234,7 +234,7 @@ class NrfBleDfuController(object):
         # Verify that command was successfully written
         try:
             res = self.ble_conn.expect('Characteristic value was written successfully.*', timeout=10)
-        except pexpect.TIMEOUT, e:
+        except (pexpect.TIMEOUT, e):
             print("State timeout")
 
     # --------------------------------------------------------------------------
@@ -264,5 +264,5 @@ class NrfBleDfuController(object):
         # Verify that command was successfully written
         try:
             res = self.ble_conn.expect('Characteristic value was written successfully.*', timeout=10)
-        except pexpect.TIMEOUT, e:
+        except (pexpect.TIMEOUT, e):
             print("State timeout")
