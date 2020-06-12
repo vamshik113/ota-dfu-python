@@ -197,7 +197,7 @@ class BleDfuControllerLegacy(NrfBleDfuController):
         try:
             res = self.ble_conn.expect('handle:.*', timeout=10)
             # res = self.ble_conn.expect('handle:', timeout=10)
-        except pexpect.TIMEOUT, e:
+        except pexpect.TIMEOUT as e:
             print("State timeout")
         except:
             pass

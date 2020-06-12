@@ -1,10 +1,12 @@
 import os
 import pexpect
 import re
+import zlib
 
 from abc   import ABCMeta, abstractmethod
 from array import array
 from util  import *
+from scan import Scan
 
 verbose = False
 
@@ -60,9 +62,9 @@ class NrfBleDfuController(object):
 
         self.firmware_path = firmware_path
         self.datfile_path = datfile_path
-
-        self.ble_conn = pexpect.spawn("sudo hcitool lescan")
-        self.ble_conn = pexpect.spawn("gatttool -b '%s' --interactive" % target_mac)
+        self.scan_obj = Scan(None)
+        scan_list = self.scan_obj.scan()
+        self.ble_conn = pexpect.spawn("gatttool -b '%s' -t random --interactive" % target_mac)
         self.ble_conn.delaybeforesend = 0
 
     # --------------------------------------------------------------------------
@@ -105,7 +107,6 @@ class NrfBleDfuController(object):
 
             self.image_size = len(self.bin_array)
             print("Binary imge size: %d" % self.image_size)
-            print("Binary CRC32: %d" % crc32_unsigned(array_to_hex_string(self.bin_array)))
 
             return
 
@@ -122,21 +123,21 @@ class NrfBleDfuController(object):
     # Perform a scan and connect via gatttool.
     # Will return True if a connection was established, False otherwise
     # --------------------------------------------------------------------------
-    def scan_and_connect(self, timeout=2):
+    def scan_and_connect(self, timeout=30):
         if verbose: print("scan_and_connect")
 
         print("Connecting to %s" % (self.target_mac))
 
         try:
             self.ble_conn.expect('\[LE\]>', timeout=timeout)
-        except (pexpect.TIMEOUT, e):
+        except pexpect.TIMEOUT as e:
             return False
 
         self.ble_conn.sendline('connect')
 
         try:
             res = self.ble_conn.expect('.*Connection successful.*', timeout=timeout)
-        except (pexpect.TIMEOUT, e):
+        except pexpect.TIMEOUT as e:            
             return False
 
         return True
@@ -153,8 +154,7 @@ class NrfBleDfuController(object):
 
         # Re-start gatttool with the new address
         self.disconnect()
-        self.ble_conn = pexpect.spawn("sudo hcitool lescan")
-        self.ble_conn = pexpect.spawn("gatttool -b '%s' --interactive" % self.target_mac)
+        self.ble_conn = pexpect.spawn("gatttool -b '%s' -t random --interactive" % self.target_mac)
         self.ble_conn.delaybeforesend = 0
 
     # --------------------------------------------------------------------------
@@ -167,10 +167,11 @@ class NrfBleDfuController(object):
         self.ble_conn.sendline('characteristics')
 
         try:
-            self.ble_conn.expect([uuid], timeout=2)
-            handles = re.findall('.*handle: (0x....),.*char value handle: (0x....)', self.ble_conn.before)
+            self.ble_conn.expect([uuid], timeout=10)
+            handles = re.findall('.*handle: (0x....),.*char value handle: (0x....)', self.ble_conn.before.decode('utf-8'))
             (handle, value_handle) = handles[-1]
-        except (pexpect.TIMEOUT, e):
+            
+        except pexpect.TIMEOUT as e:
             raise Exception("UUID not found: {}".format(uuid))
 
         return (int(handle, 16), int(value_handle, 16), int(value_handle, 16)+1)
@@ -202,7 +203,7 @@ class NrfBleDfuController(object):
                 # continue to wait.
                 #
                 self.ble_conn.sendline('')
-                string = self.ble_conn.before
+                string = self.ble_conn.before.decode('utf-8')
                 if '[   ]' in string:
                     print('Connection lost! ')
                     raise Exception('Connection Lost')
@@ -211,7 +212,7 @@ class NrfBleDfuController(object):
             if index == 0:
                 after = self.ble_conn.after
                 hxstr = after.split()[3:]
-                handle = long(float.fromhex(hxstr[0]))
+                handle = int(float.fromhex(hxstr[0].decode('utf-8')))
                 return hxstr[2:]
 
             else:
@@ -234,7 +235,8 @@ class NrfBleDfuController(object):
         # Verify that command was successfully written
         try:
             res = self.ble_conn.expect('Characteristic value was written successfully.*', timeout=10)
-        except (pexpect.TIMEOUT, e):
+        except pexpect.TIMEOUT as e:
+            
             print("State timeout")
 
     # --------------------------------------------------------------------------
@@ -264,5 +266,23 @@ class NrfBleDfuController(object):
         # Verify that command was successfully written
         try:
             res = self.ble_conn.expect('Characteristic value was written successfully.*', timeout=10)
-        except (pexpect.TIMEOUT, e):
+        except pexpect.TIMEOUT as e:
+            print("State timeout")
+
+    # --------------------------------------------------------------------------
+    #  Enable notifications from the Control Point Handle
+    # --------------------------------------------------------------------------
+    def _enable_indications(self, cccd_handle):
+        if verbose: print('_enable_notifications')
+
+        cmd  = 'char-write-req 0x%04x %s' % (cccd_handle, '0200')
+
+        if verbose: print(cmd)
+
+        self.ble_conn.sendline(cmd)
+
+        # Verify that command was successfully written
+        try:
+            res = self.ble_conn.expect('Characteristic value was written successfully.*', timeout=10)
+        except pexpect.TIMEOUT as e:
             print("State timeout")

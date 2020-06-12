@@ -19,7 +19,7 @@ from ble_legacy_dfu_controller import BleDfuControllerLegacy
 
 def main():
 
-    init_msg =  """
+    init_msg = """
     ================================
     ==                            ==
     ==         DFU Server         ==
@@ -81,7 +81,7 @@ def main():
 
         options, args = parser.parse_args()
 
-    except (Exception , e):
+    except Exception as e:
         print(e)
         print("For help use --help")
         sys.exit(2)
@@ -108,7 +108,7 @@ def main():
             #print(options.zipfile)
             try:
                 hexfile, datfile = unpacker.unpack_zipfile(options.zipfile)	
-            except (Exception, e):
+            except Exception as e:
                 print("ERR")
                 print(e)
                 pass
@@ -137,6 +137,7 @@ def main():
         else:
             ble_dfu = BleDfuControllerLegacy(options.address.upper(), hexfile, datfile)
 
+
         # Initialize inputs
         ble_dfu.input_setup()
 
@@ -147,21 +148,25 @@ def main():
                 success = ble_dfu.switch_to_dfu_mode()
                 if not success:
                     print("Couldn't reconnect")
+                else:
+                    ble_dfu.start()
+            else:
+                ble_dfu.start()
         else:
+            print("Couldn't connect, will try DFU MAC")
             # The device might already be in DFU mode (MAC + 1)
             ble_dfu.target_mac_increase(1)
 
             # Try connection with new address
-            print("Couldn't connect, will try DFU MAC")
-            if not ble_dfu.scan_and_connect():
+            if ble_dfu.scan_and_connect():
+                ble_dfu.start()
+            else:
                 raise Exception("Can't connect to device")
-
-        ble_dfu.start()
 
         # Disconnect from peer device if not done already and clean up.
         ble_dfu.disconnect()
 
-    except (Exception, e):
+    except Exception as e:
         # print(traceback.format_exc())
         print("Exception at line {}: {}".format(sys.exc_info()[2].tb_lineno, e))
         pass
@@ -171,7 +176,7 @@ def main():
 
     # If Unpacker for zipfile used then delete Unpacker
     if unpacker != None:
-       unpacker.delete()
+        unpacker.delete()
 
     print("DFU Server done")
 

@@ -1,6 +1,7 @@
 import math
 import pexpect
 import time
+import binascii
 
 from array import array
 from util  import *
@@ -71,9 +72,9 @@ class Results:
 
 class BleDfuControllerSecure(NrfBleDfuController):
     # Class constants
-    UUID_BUTTONLESS      = '8e400001-f315-4f60-9fb8-838830daea50'
     UUID_CONTROL_POINT   = '8ec90001-f315-4f60-9fb8-838830daea50'
     UUID_PACKET          = '8ec90002-f315-4f60-9fb8-838830daea50'
+    UUID_BUTTONLESS      = '8ec90003-f315-4f60-9fb8-838830daea50'
 
     # Constructor inherited from abstract base class
 
@@ -83,7 +84,6 @@ class BleDfuControllerSecure(NrfBleDfuController):
     def start(self):
         (_, self.ctrlpt_handle, self.ctrlpt_cccd_handle) = self._get_handles(self.UUID_CONTROL_POINT)
         (_, self.data_handle, _) = self._get_handles(self.UUID_PACKET)
-
         if verbose:
             print('Control Point Handle: 0x%04x, CCCD: 0x%04x' % (self.ctrlpt_handle, self.ctrlpt_cccd_handle))
             print('Packet handle: 0x%04x' % (self.data_handle))
@@ -111,8 +111,8 @@ class BleDfuControllerSecure(NrfBleDfuController):
         dfu_mode = False
 
         try:
-            self.ble_conn.expect([self.UUID_BUTTONLESS], timeout=2)
-        except (pexpect.TIMEOUT , e):
+            self.ble_conn.expect([self.UUID_BUTTONLESS], timeout=5)
+        except pexpect.TIMEOUT as e:
             dfu_mode = True
 
         return dfu_mode
@@ -120,14 +120,15 @@ class BleDfuControllerSecure(NrfBleDfuController):
     def switch_to_dfu_mode(self):
         (_, bl_value_handle, bl_cccd_handle) = self._get_handles(self.UUID_BUTTONLESS)
 
-        self._enable_notifications(bl_cccd_handle)
+        self._enable_indications(bl_cccd_handle)
 
         # Reset the board in DFU mode. After reset the board will be disconnected
         cmd = 'char-write-req 0x%04x 01' % (bl_value_handle)
         self.ble_conn.sendline(cmd)
 
         # Wait some time for board to reboot
-        time.sleep(0.5)
+        time.sleep(1)
+        print("Switched to DFU mode Successfully")
 
         # Increase the mac address by one and reconnect
         self.target_mac_increase(1)
@@ -189,7 +190,7 @@ class BleDfuControllerSecure(NrfBleDfuController):
         if result[1] != Results.SUCCESS:
             raise Exception("Error in {} procedure, reason: {}".format(
                 Procedures.to_string(result[0]),
-                Results.to_string(result[1])))
+                Results.to_string(result[1])))       
 
         return result
 
@@ -274,14 +275,14 @@ class BleDfuControllerSecure(NrfBleDfuController):
             if offset == 0 or offset >= obj_max_size or crc32 != crc32_unsigned(self.bin_array[0:offset]):
                 # Create Data Object
                 size = min(obj_max_size, self.image_size - offset)
-                self._dfu_send_command(Procedures.CREATE, [Procedures.PARAM_DATA] + uint32_to_bytes_le(size))
+                self._dfu_send_command(Procedures.CREATE, [Procedures.PARAM_DATA] + uint32_to_bytes_le(int(size)))
                 self._wait_and_parse_notify()
 
             segment_count = 0
             segment_total = int(math.ceil(min(obj_max_size, self.image_size-offset)/float(self.pkt_payload_size)))
 
-            segment_begin = offset
-            segment_end = min(offset+obj_max_size, self.image_size)
+            segment_begin = int(offset)
+            segment_end = int(min(offset+obj_max_size, self.image_size))
 
             for i in range(segment_begin, segment_end, self.pkt_payload_size):
                 num_bytes = min(self.pkt_payload_size, segment_end - i)
@@ -301,7 +302,7 @@ class BleDfuControllerSecure(NrfBleDfuController):
 
                     if res != Results.SUCCESS:
                         raise Exception("bad notification status: {}".format(Results.to_string(res)))
-
+                 
                     if crc32 != crc32_unsigned(self.bin_array[0:offset]):
                         # Something went wrong, need to re-transmit this object
                         return 0

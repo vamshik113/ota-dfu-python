@@ -15,7 +15,7 @@ class Unpacker(object):
    # 
    #--------------------------------------------------------------------------
    def entropy(self, length):
-       return ''.join(random.choice(string.lowercase) for i in range (length))
+       return ''.join(random.choice(string.ascii_lowercase) for i in range (length))
 
    #--------------------------------------------------------------------------
    # 
@@ -26,7 +26,7 @@ class Unpacker(object):
             raise Exception("Error: file, not found!")
 
         # Create unique working direction into which the zip file is expanded
-        self.unzip_dir = "{0}/{1}_{2}".format(tempfile.gettempdir(), os.path.splitext(basename(file))[0], self.entropy(6))
+        self.unzip_dir = ("{0}/{1}_{2}".format(tempfile.gettempdir(), os.path.splitext(basename(file))[0], self.entropy(6)))
 
         datfilename = ""
         binfilename = ""
