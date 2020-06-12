@@ -8,6 +8,8 @@ from subprocess import call
 
 import pexpect
 import signal
+import sys
+import time
 
 #------------------------------------------------------------------------------
 # Bluetooth LE scan for advertising peripheral devices
@@ -21,10 +23,15 @@ class HciTool:
     def scan( self ):
 
         try:
-            self.hcitool = pexpect.spawn('hcitool lescan')
+            self.hcitool = pexpect.spawn('hciconfig hci0 down')
+            self.hcitool = pexpect.spawn('hciconfig hci0 up')
+            self.hcitool = pexpect.spawn('hcitool lescan')            
             #self.hcitool.logfile = sys.stdout
-            index = self.hcitool.expect(['LE Scan ...'], 1)
+            index = self.hcitool.expect(['LE Scan ...'])
+            time.sleep(2)
+        
         except pexpect.EOF:
+
             self.hcitool.terminate(force=True)
             return []
         except Exception as err:
@@ -38,10 +45,13 @@ class HciTool:
             return []
 
         list = []
-        for dummy in range(0, 2):
+        for dummy in range(0, 4):
+            #print("for loop:",self.hcitool.readline())
             try:
                 list.append(self.hcitool.readline())
+                #print("list:",list)
             except pexpect.TIMEOUT:
+                return list
                 break
 
         if list == []:
@@ -60,7 +70,7 @@ class HciTool:
 
         # Strip newline from items in list
         list = [item.strip() for item in list]
-        list = list[0:2]
+        #list = list
 
         # Close pexpect (release device for subsequent use)
         self.hcitool.terminate(force=True)
@@ -91,6 +101,7 @@ class Scan:
             print("scan: pexpect.TIMEOUT")
             pass
         except Exception as e:
+            print(e)
             print("scan: exception: {0} ".format(sys.exc_info()[0]))
             pass
 

@@ -29,15 +29,14 @@ def array_to_hex_string(arr):
     return hex_str
 
 def crc32_unsigned(bytestring):
-    return binascii.crc32(bytestring) % (1 << 32)
+    return binascii.crc32(bytestring) % (1 << 32)     
 
 def mac_string_to_uint(mac):
     parts = list(re.match('(..):(..):(..):(..):(..):(..)', mac).groups())
-    ints = map(lambda x: int(x, 16), parts)
-
+    ints = list(map(lambda x: int(x, 16), parts))
     res = 0
-    for i in range(0, len(ints)):
-        res += (ints[len(ints)-1 - i] << 8*i)
+    for i in range(0, len((ints))):
+        res += (ints[len((ints))-1 - i] << 8*i)
 
     return res
 
