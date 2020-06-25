@@ -62,8 +62,6 @@ class NrfBleDfuController(object):
 
         self.firmware_path = firmware_path
         self.datfile_path = datfile_path
-        self.scan_obj = Scan(None)
-        scan_list = self.scan_obj.scan()
         self.ble_conn = pexpect.spawn("gatttool -b '%s' -t random --interactive" % target_mac)
         self.ble_conn.delaybeforesend = 0
 
@@ -126,18 +124,23 @@ class NrfBleDfuController(object):
     def scan_and_connect(self, timeout=30):
         if verbose: print("scan_and_connect")
 
+        self.scan_obj = Scan(None)
+        scan_list = self.scan_obj.scan()
+        print("scan_list:",scan_list)
         print("Connecting to %s" % (self.target_mac))
 
         try:
             self.ble_conn.expect('\[LE\]>', timeout=timeout)
         except pexpect.TIMEOUT as e:
+            print("scan error:",e)
             return False
 
         self.ble_conn.sendline('connect')
 
         try:
             res = self.ble_conn.expect('.*Connection successful.*', timeout=timeout)
-        except pexpect.TIMEOUT as e:            
+            print("Connection successfull")
+        except pexpect.TIMEOUT as e:  
             return False
 
         return True

@@ -28,7 +28,8 @@ class HciTool:
             self.hcitool = pexpect.spawn('hcitool lescan')            
             #self.hcitool.logfile = sys.stdout
             index = self.hcitool.expect(['LE Scan ...'])
-            time.sleep(2)
+            time.sleep(10)
+            print("scan after:",self.hcitool.after)
         
         except pexpect.EOF:
 

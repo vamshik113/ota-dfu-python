@@ -151,6 +151,7 @@ def main():
                 else:
                     ble_dfu.start()
             else:
+                print("Already in DFU mode")
                 ble_dfu.start()
         else:
             print("Couldn't connect, will try DFU MAC")

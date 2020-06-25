@@ -1,0 +1,8 @@
+{
+    "manifest": {
+        "application": {
+            "bin_file": "ble_app_vsens_pca10100_s113.bin",
+            "dat_file": "ble_app_vsens_pca10100_s113.dat"
+        }
+    }
+}
